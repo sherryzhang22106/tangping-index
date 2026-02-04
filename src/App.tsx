@@ -66,6 +66,14 @@ const MainApp: React.FC = () => {
     setShowRecovery(false);
   };
 
+  const handlePaymentSuccess = (visitorId: string) => {
+    // 支付成功后直接进入测评
+    setActiveCode('PAID_' + Date.now());
+    localStorage.setItem('growth_barrier_active_code', 'PAID');
+    setAppState('ACTIVE');
+    toast.success('支付成功，开始测评！');
+  };
+
   const handleActivation = async (code: string) => {
     setLoading(true);
     const result = await api.validateCode(code, userId);
@@ -172,7 +180,15 @@ const MainApp: React.FC = () => {
       <main className="flex-grow w-full py-8">
         <div className="max-w-5xl mx-auto px-4">
           {appState === 'LANDING' && <Landing onStart={() => setAppState('ACTIVATION')} />}
-          {appState === 'ACTIVATION' && <CodeActivation onActivate={handleActivation} onBack={() => setAppState('LANDING')} loading={loading} />}
+          {appState === 'ACTIVATION' && (
+            <CodeActivation
+              onActivate={handleActivation}
+              onPaymentSuccess={handlePaymentSuccess}
+              onBack={() => setAppState('LANDING')}
+              loading={loading}
+              visitorId={userId}
+            />
+          )}
           {appState === 'ACTIVE' && (
             <Questionnaire responses={responses} setResponses={(updater) => {
               setResponses(prev => {
