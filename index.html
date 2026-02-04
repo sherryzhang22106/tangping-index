@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="躺平指数测评 - 41道灵魂拷问，测测你是卷王本王还是躺平祖师爷">
+    <meta name="keywords" content="躺平,测评,打工人,佛系,内卷">
+    <title>躺平指数测评 - 你的躺平指数到底有多高？</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Loading state before React hydrates */
+        #root:empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        #root:empty::after {
+            content: "";
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #f97316;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 打印样式 - 用于生成 PDF */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* 隐藏不需要打印的元素 */
+            header, footer, .print\\:hidden,
+            button, nav,
+            [data-download-pdf],
+            .fixed {
+                display: none !important;
+            }
+
+            /* 报告内容样式 */
+            #report-content {
+                max-width: 100% !important;
+                padding: 20px !important;
+                margin: 0 !important;
+            }
+
+            /* 展开所有折叠内容 */
+            [class*="max-h-0"] {
+                max-height: none !important;
+                opacity: 1 !important;
+            }
+
+            /* 确保内容不被截断 */
+            section, div, article {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+            /* 段落避免截断 */
+            p, h1, h2, h3, h4, h5, h6 {
+                orphans: 3;
+                widows: 3;
+            }
+
+            /* 标题后不分页 */
+            h1, h2, h3, h4, h5, h6 {
+                page-break-after: avoid;
+            }
+
+            /* 圆角在打印时简化 */
+            .rounded-\\[2\\.5rem\\], .rounded-\\[2rem\\], .rounded-\\[3rem\\] {
+                border-radius: 16px !important;
+            }
+
+            /* 阴影在打印时移除 */
+            .shadow-xl, .shadow-2xl, .shadow-lg {
+                box-shadow: none !important;
+            }
+
+            /* 确保背景色打印 */
+            .bg-gradient-to-br {
+                background: linear-gradient(to bottom right, #fb923c, #f97316, #f59e0b) !important;
+            }
+
+            /* AI 分析内容样式 */
+            .report-markdown {
+                font-size: 14px !important;
+                line-height: 1.8 !important;
+            }
+
+            .report-markdown h2 {
+                font-size: 18px !important;
+                font-weight: 700 !important;
+                margin-top: 24px !important;
+                margin-bottom: 12px !important;
+                page-break-after: avoid !important;
+            }
+
+            .report-markdown p {
+                margin-bottom: 12px !important;
+                text-align: justify !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+</body>
+</html>
