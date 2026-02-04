@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateToken, verifyPassword } from '../lib/auth';
-import prisma from '../lib/db';
+import { generateToken, verifyPassword } from '../../shared/auth';
+import prisma from '../../shared/db';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

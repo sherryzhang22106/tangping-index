@@ -1,7 +1,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import prisma from '../lib/db';
-import { sanitizeForAI } from '../lib/sanitize';
+import prisma from '../../shared/db';
+import { sanitizeForAI } from '../../shared/sanitize';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1/chat/completions';

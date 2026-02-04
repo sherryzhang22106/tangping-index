@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import prisma from '../lib/db';
-import { sanitizeCode, sanitizeResponses, sanitizeInput } from '../lib/sanitize';
+import prisma from '../../shared/db';
+import { sanitizeCode, sanitizeResponses, sanitizeInput } from '../../shared/sanitize';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
