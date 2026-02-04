@@ -44,7 +44,7 @@ export function extractToken(req: VercelRequest): string | null {
 }
 
 export function withAuth(
-  handler: (req: VercelRequest, res: VercelResponse, admin: AdminPayload) => Promise<void>
+  handler: (req: VercelRequest, res: VercelResponse, admin: AdminPayload) => Promise<any>
 ) {
   return async (req: VercelRequest, res: VercelResponse) => {
     const token = extractToken(req);

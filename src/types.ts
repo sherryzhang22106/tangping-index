@@ -79,8 +79,8 @@ export interface OpenAnswers {
 
 export interface ReportData {
   scores: Scores;
-  baseInfo: BaseInfo;
-  openAnswers: OpenAnswers;
+  baseInfo?: BaseInfo;
+  openAnswers?: OpenAnswers;
   aiStatus?: 'pending' | 'generating' | 'completed' | 'failed';
   aiAnalysis?: string;
   aiGeneratedAt?: string;
