@@ -31,7 +31,7 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
     setPaymentError(null);
 
     try {
-      const response = await fetch('/api/payment/create', {
+      const response = await fetch('/api/payment?action=create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ visitorId })
@@ -58,7 +58,7 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
 
     const checkPaymentStatus = async () => {
       try {
-        const response = await fetch(`/api/payment/notify?orderNo=${orderNo}`);
+        const response = await fetch(`/api/payment?action=query&orderNo=${orderNo}`);
         const result = await response.json();
 
         if (result.success && result.data.paid) {
