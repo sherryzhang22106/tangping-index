@@ -97,6 +97,10 @@ async function createPayment(visitorId: string): Promise<any> {
 
 // 查询支付状态
 async function queryPayment(orderNo: string): Promise<any> {
+  if (!PRIVATE_KEY) {
+    throw new Error('支付配置未完成');
+  }
+
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const nonceStr = crypto.randomBytes(16).toString('hex');
   const urlPath = `/v3/pay/transactions/out-trade-no/${orderNo}?mchid=${MCHID}`;
@@ -122,7 +126,14 @@ async function queryPayment(orderNo: string): Promise<any> {
     },
   });
 
-  const result = await response.json();
+  const text = await response.text();
+  let result;
+  try {
+    result = JSON.parse(text);
+  } catch (e) {
+    console.error('查询响应不是JSON:', text.substring(0, 200));
+    throw new Error('查询支付状态失败');
+  }
 
   if (result.trade_state === 'SUCCESS') {
     return {
@@ -135,8 +146,8 @@ async function queryPayment(orderNo: string): Promise<any> {
   } else {
     return {
       paid: false,
-      status: result.trade_state,
-      message: result.trade_state_desc
+      status: result.trade_state || 'UNKNOWN',
+      message: result.trade_state_desc || result.message || '未知状态'
     };
   }
 }
