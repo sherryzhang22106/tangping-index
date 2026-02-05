@@ -64,29 +64,32 @@ export const api = {
   },
 
   /**
-   * Save user progress
+   * Save user progress (local storage only - API removed due to Vercel limits)
    */
   saveProgress: async (
     userId: string,
     _page: number,
     responses: AssessmentResponse
   ): Promise<void> => {
-    await fetchApi('/progress', {
-      method: 'POST',
-      body: JSON.stringify({ userId, responses }),
-    });
+    try {
+      localStorage.setItem(`progress_${userId}`, JSON.stringify({ responses }));
+    } catch (e) {
+      console.error('Failed to save progress:', e);
+    }
   },
 
   /**
-   * Get saved progress
+   * Get saved progress (local storage only - API removed due to Vercel limits)
    */
   getProgress: async (
     userId: string
   ): Promise<{ responses: AssessmentResponse } | null> => {
-    const result = await fetchApi<{ responses: AssessmentResponse }>(
-      `/progress?userId=${encodeURIComponent(userId)}`
-    );
-    return result.success && result.data ? result.data : null;
+    try {
+      const saved = localStorage.getItem(`progress_${userId}`);
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
   },
 
   /**
