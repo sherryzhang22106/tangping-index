@@ -149,7 +149,7 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
                 <p className="text-sm text-slate-500 mb-1">测评价格</p>
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-sm text-orange-600 font-bold">¥</span>
-                  <span className="text-4xl font-black text-orange-600">2.9</span>
+                  <span className="text-4xl font-black text-orange-600">0.1</span>
                 </div>
                 <p className="text-xs text-slate-400 mt-2">41道专业测评题 + AI深度分析报告</p>
               </div>
@@ -201,7 +201,7 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M9.5 4C5.36 4 2 6.69 2 10c0 1.89 1.08 3.56 2.78 4.66L4 17l2.5-1.5C7.45 15.83 8.45 16 9.5 16c4.14 0 7.5-2.69 7.5-6S13.64 4 9.5 4z"/>
                       </svg>
-                      立即支付 ¥2.9
+                      立即支付 ¥0.1
                     </>
                   )}
                 </button>

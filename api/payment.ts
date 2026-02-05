@@ -59,7 +59,7 @@ async function createPayment(visitorId: string): Promise<any> {
     time_expire: new Date(Date.now() + 30 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, '+08:00'),
     notify_url: NOTIFY_URL,
     amount: {
-      total: 290,
+      total: 10, // 0.1元 = 10分
       currency: 'CNY'
     },
     attach: visitorId
@@ -90,7 +90,7 @@ async function createPayment(visitorId: string): Promise<any> {
   return {
     orderNo,
     codeUrl: result.code_url,
-    amount: 2.9,
+    amount: 0.1,
     expireTime: 30 * 60
   };
 }
