@@ -50,6 +50,10 @@ const MainApp: React.FC = () => {
 
   useEffect(() => {
     const checkProgress = async () => {
+      // 只有当用户之前已经激活过（有激活码记录）才提示恢复进度
+      const hasActiveCode = localStorage.getItem('growth_barrier_active_code');
+      if (!hasActiveCode) return;
+
       const saved = await api.getProgress(userId);
       if (saved && Object.keys(saved.responses).length > 0) {
         if (appState === 'LANDING') {
@@ -72,6 +76,7 @@ const MainApp: React.FC = () => {
 
   const handleStartFresh = () => {
     api.saveProgress(userId, 0, {});
+    localStorage.removeItem('growth_barrier_active_code');
     setShowRecovery(false);
   };
 
