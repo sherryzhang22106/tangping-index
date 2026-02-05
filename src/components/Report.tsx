@@ -422,66 +422,75 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
 
       {/* 分享弹窗 */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowShareModal(false)}>
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-black text-slate-800">分享到朋友圈</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-12 overflow-y-auto" onClick={() => setShowShareModal(false)}>
+          <div className="bg-white rounded-3xl p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            {/* 生成的图片优先显示在顶部 */}
+            {shareImageUrl && (
+              <div className="mb-4">
+                <p className="text-sm text-green-600 font-bold text-center mb-2">👇 长按图片保存到相册</p>
+                <img
+                  src={shareImageUrl}
+                  alt="分享图片"
+                  className="w-full rounded-xl shadow-lg"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-black text-slate-800">分享到朋友圈</h3>
               <button onClick={() => setShowShareModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
                 <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
-            {/* 分享卡片预览 */}
-            <div ref={shareCardRef} className="bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 rounded-2xl p-6 text-white mb-6 shadow-xl">
+            {/* 分享卡片预览 - 隐藏用于生成图片 */}
+            <div ref={shareCardRef} className={`bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 rounded-2xl p-5 text-white shadow-xl ${shareImageUrl ? 'hidden' : 'mb-4'}`}>
               <div className="text-center">
                 {/* 顶部标题 */}
-                <p className="text-xs text-white/70 font-bold tracking-wider mb-3">🔬 躺平光谱研究所 · 权威认证</p>
+                <p className="text-[10px] text-white/70 font-bold tracking-wider mb-2">🔬 躺平光谱研究所 · 权威认证</p>
 
-                {/* 等级展示 */}
-                <div className="text-5xl mb-2">{data.scores.level.emoji}</div>
-                <h4 className="text-2xl font-black mb-1">我是「{data.scores.level.name}」</h4>
-                <p className="text-white/80 text-sm mb-4">"{data.scores.level.description}"</p>
+                {/* 标签+等级 最显眼 */}
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <span className="text-4xl">{data.scores.level.emoji}</span>
+                  <div className="text-left">
+                    <h4 className="text-2xl font-black leading-tight">{data.scores.level.name}</h4>
+                    <span className="text-xs bg-white/30 px-2 py-0.5 rounded-full">{data.scores.level.level}</span>
+                  </div>
+                </div>
+                <p className="text-white/80 text-xs mb-3">"{data.scores.level.description}"</p>
 
-                {/* 躺平指数 */}
-                <div className="bg-white/20 backdrop-blur rounded-xl p-4 mb-4">
-                  <p className="text-xs text-white/60 mb-1">躺平指数</p>
-                  <p className="text-5xl font-black">{data.scores.totalScore}<span className="text-lg opacity-60">/245</span></p>
-                  <p className="text-xs text-white/60 mt-1">
-                    {data.scores.totalScore < 100 ? '还在卷？年轻人不讲武德' :
-                     data.scores.totalScore < 150 ? '半躺半卷，精神状态很稳定' :
-                     data.scores.totalScore < 200 ? '躺得不错，继续保持' : '躺平界的天花板，respect!'}
-                  </p>
+                {/* 躺平指数 - 缩小 */}
+                <div className="bg-white/20 backdrop-blur rounded-xl p-3 mb-3">
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="text-xs text-white/60">躺平指数</span>
+                    <span className="text-3xl font-black">{data.scores.totalScore}</span>
+                    <span className="text-sm opacity-60">/245</span>
+                  </div>
                 </div>
 
                 {/* 亮点数据 */}
-                <div className="grid grid-cols-2 gap-2 text-xs mb-4">
-                  <div className="bg-white/10 rounded-lg p-3">
+                <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                  <div className="bg-white/10 rounded-lg p-2">
                     <p className="text-white/50 text-[10px]">最躺的方面</p>
-                    <p className="font-bold text-sm mt-1">{data.scores.analysis.highestDim.nameCn}</p>
-                    <p className="text-white/60 text-[10px]">{data.scores.analysis.highestDim.score.toFixed(0)}% 已躺平</p>
+                    <p className="font-bold text-sm">{data.scores.analysis.highestDim.nameCn}</p>
                   </div>
-                  <div className="bg-white/10 rounded-lg p-3">
+                  <div className="bg-white/10 rounded-lg p-2">
                     <p className="text-white/50 text-[10px]">还在卷的方面</p>
-                    <p className="font-bold text-sm mt-1">{data.scores.analysis.lowestDim.nameCn}</p>
-                    <p className="text-white/60 text-[10px]">卷不动了也得卷</p>
+                    <p className="font-bold text-sm">{data.scores.analysis.lowestDim.nameCn}</p>
                   </div>
                 </div>
 
-                {/* 仰卧起坐型特殊标签 */}
-                {data.scores.yangWoQiZuo.type === 'yangwoqizuo' && (
-                  <div className="bg-white/20 rounded-lg p-2 mb-4">
-                    <p className="text-xs font-bold">🔄 特殊体质：仰卧起坐型</p>
-                    <p className="text-[10px] text-white/70">时卷时躺，反复横跳</p>
+                {/* 底部二维码引导 */}
+                <div className="pt-3 border-t border-white/20 flex items-center justify-between">
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-white/90">你是什么躺平段位？</p>
+                    <p className="text-[10px] text-white/60">扫码测一测 →</p>
                   </div>
-                )}
-
-                {/* 底部引导 */}
-                <div className="pt-4 border-t border-white/20">
-                  <p className="text-sm font-bold text-white/90">你是什么躺平段位？</p>
-                  <p className="text-xs text-white/60 mt-1">41道灵魂拷问，测出你的真实状态</p>
-                  <div className="mt-3 bg-white/30 rounded-full px-4 py-2 inline-block">
-                    <p className="text-xs font-bold">小红书搜索"BetterMe星球-成长站"</p>
-                  </div>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent('https://lying.bettermee.cn')}&bgcolor=ffffff&color=000000`}
+                    alt="扫码测试"
+                    className="w-14 h-14 rounded-lg bg-white p-1"
+                  />
                 </div>
               </div>
             </div>
@@ -507,18 +516,6 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
                 测了一下躺平指数，我居然是「{data.scores.level.name}」😂 {data.scores.level.description}，你们呢？
               </p>
             </div>
-
-            {/* 生成的图片（微信内长按保存） */}
-            {shareImageUrl && (
-              <div className="mb-4">
-                <p className="text-sm text-green-600 font-bold text-center mb-2">👇 长按图片保存到相册</p>
-                <img
-                  src={shareImageUrl}
-                  alt="分享图片"
-                  className="w-full rounded-xl shadow-lg"
-                />
-              </div>
-            )}
 
             <button
               onClick={handleSaveImage}
