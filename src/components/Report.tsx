@@ -92,8 +92,58 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
     </div>
   );
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    // 点击分享按钮后自动生成图片
     setShowShareModal(true);
+    setGeneratingImage(true);
+
+    // 等待弹窗渲染
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    if (!shareCardRef.current) {
+      setGeneratingImage(false);
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(shareCardRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null,
+      });
+
+      const imageUrl = canvas.toDataURL('image/png');
+      setShareImageUrl(imageUrl);
+
+      // 滚动到弹窗顶部
+      setTimeout(() => {
+        if (shareModalRef.current) {
+          shareModalRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Generate image error:', error);
+      alert('生成图片失败，请重试');
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
+  // 保存图片到相册
+  const handleSaveToAlbum = () => {
+    if (!shareImageUrl) return;
+
+    // 创建下载链接
+    const link = document.createElement('a');
+    link.download = `躺平指数-${data.scores.level.name}.png`;
+    link.href = shareImageUrl;
+    link.click();
+
+    // 微信内提示
+    const isWechat = /micromessenger/i.test(navigator.userAgent);
+    if (isWechat) {
+      alert('图片已生成！请长按上方图片，选择"保存图片"');
+    }
   };
 
   const handleCopyLink = () => {
@@ -107,50 +157,6 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
 
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [generatingImage, setGeneratingImage] = useState(false);
-
-  const handleSaveImage = async () => {
-    if (!shareCardRef.current) return;
-
-    setGeneratingImage(true);
-    try {
-      const canvas = await html2canvas(shareCardRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: null,
-      });
-
-      const imageUrl = canvas.toDataURL('image/png');
-      setShareImageUrl(imageUrl);
-
-      // 滚动到图片显示位置
-      setTimeout(() => {
-        if (shareImageRef.current) {
-          shareImageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else if (shareModalRef.current) {
-          shareModalRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      }, 100);
-
-      // 检测是否在微信内
-      const isWechat = /micromessenger/i.test(navigator.userAgent);
-
-      if (isWechat) {
-        // 微信内：显示图片让用户长按保存
-        // 图片已经设置到 shareImageUrl，会显示在弹窗中
-      } else {
-        // 非微信：直接下载
-        const link = document.createElement('a');
-        link.download = `躺平指数-${data.scores.level.name}.png`;
-        link.href = imageUrl;
-        link.click();
-      }
-    } catch (error) {
-      console.error('Save image error:', error);
-      alert('生成图片失败，请尝试截图保存');
-    } finally {
-      setGeneratingImage(false);
-    }
-  };
 
   const [downloading, setDownloading] = useState(false);
 
@@ -433,12 +439,30 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
 
       {/* 分享弹窗 */}
       {showShareModal && (
-        <div ref={shareModalRef} className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-12 overflow-y-auto" onClick={() => setShowShareModal(false)}>
+        <div ref={shareModalRef} className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-8 overflow-y-auto" onClick={() => { setShowShareModal(false); setShareImageUrl(null); }}>
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
-            {/* 生成的图片优先显示在顶部 */}
-            {shareImageUrl && (
+            {/* 关闭按钮 */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-black text-slate-800">分享到朋友圈</h3>
+              <button onClick={() => { setShowShareModal(false); setShareImageUrl(null); }} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* 生成中状态 */}
+            {generatingImage && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <svg className="animate-spin h-10 w-10 text-green-500 mb-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-slate-600 font-bold">正在生成分享图片...</p>
+              </div>
+            )}
+
+            {/* 生成的图片 */}
+            {shareImageUrl && !generatingImage && (
               <div ref={shareImageRef} className="mb-4">
-                <p className="text-sm text-green-600 font-bold text-center mb-2">👇 长按图片保存到相册</p>
                 <img
                   src={shareImageUrl}
                   alt="分享图片"
@@ -447,20 +471,10 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
               </div>
             )}
 
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-black text-slate-800">分享到朋友圈</h3>
-              <button onClick={() => setShowShareModal(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            {/* 分享卡片预览 - 隐藏用于生成图片 */}
-            <div ref={shareCardRef} className={`bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 rounded-2xl p-5 text-white shadow-xl ${shareImageUrl ? 'hidden' : 'mb-4'}`}>
+            {/* 分享卡片 - 用于生成图片，始终隐藏 */}
+            <div ref={shareCardRef} className="bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 rounded-2xl p-5 text-white shadow-xl" style={{ position: 'absolute', left: '-9999px', top: 0 }}>
               <div className="text-center">
-                {/* 顶部标题 */}
                 <p className="text-[10px] text-white/70 font-bold tracking-wider mb-2">🔬 躺平光谱研究所 · 权威认证</p>
-
-                {/* 标签+等级 最显眼 */}
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <span className="text-4xl">{data.scores.level.emoji}</span>
                   <div className="text-left">
@@ -469,8 +483,6 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
                   </div>
                 </div>
                 <p className="text-white/80 text-xs mb-3">"{data.scores.level.description}"</p>
-
-                {/* 躺平指数 - 缩小 */}
                 <div className="bg-white/20 backdrop-blur rounded-xl p-3 mb-3">
                   <div className="flex items-baseline justify-center gap-1">
                     <span className="text-xs text-white/60">躺平指数</span>
@@ -478,8 +490,6 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
                     <span className="text-sm opacity-60">/245</span>
                   </div>
                 </div>
-
-                {/* 亮点数据 */}
                 <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                   <div className="bg-white/10 rounded-lg p-2">
                     <p className="text-white/50 text-[10px]">最躺的方面</p>
@@ -490,8 +500,6 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
                     <p className="font-bold text-sm">{data.scores.analysis.lowestDim.nameCn}</p>
                   </div>
                 </div>
-
-                {/* 底部二维码引导 */}
                 <div className="pt-3 border-t border-white/20 flex items-center justify-between">
                   <div className="text-left">
                     <p className="text-sm font-bold text-white/90">你是什么躺平段位？</p>
@@ -506,48 +514,36 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
               </div>
             </div>
 
-            <p className="text-sm text-slate-500 text-center mb-4">保存图片，配上文案发朋友圈</p>
+            {/* 图片生成后显示操作区 */}
+            {shareImageUrl && !generatingImage && (
+              <>
+                {/* 推荐文案 */}
+                <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                  <p className="text-xs text-amber-600 font-bold mb-2">📝 推荐文案（点击复制）</p>
+                  <p
+                    className="text-sm text-amber-800 cursor-pointer hover:bg-amber-100 p-2 rounded-lg transition-colors"
+                    onClick={() => {
+                      const text = `测了一下躺平指数，我居然是「${data.scores.level.name}」😂 ${data.scores.level.description}，你们呢？`;
+                      navigator.clipboard.writeText(text);
+                      alert('文案已复制！');
+                    }}
+                  >
+                    测了一下躺平指数，我居然是「{data.scores.level.name}」😂 {data.scores.level.description}，你们呢？
+                  </p>
+                </div>
 
-            {/* 推荐文案 */}
-            <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
-              <p className="text-xs text-amber-600 font-bold mb-2">📝 推荐文案（点击复制）</p>
-              <p
-                className="text-sm text-amber-800 cursor-pointer hover:bg-amber-100 p-2 rounded-lg transition-colors"
-                onClick={() => {
-                  const texts = [
-                    `测了一下躺平指数，我居然是「${data.scores.level.name}」😂 ${data.scores.level.description}，你们呢？`,
-                    `躺平指数${data.scores.totalScore}分，官方认证的「${data.scores.level.name}」🛋️ 不服来测！`,
-                    `原来我在${data.scores.analysis.highestDim.nameCn}方面已经彻底躺平了...你猜你最躺的是什么？`,
-                  ];
-                  const text = texts[Math.floor(Math.random() * texts.length)];
-                  navigator.clipboard.writeText(text);
-                  alert('文案已复制！');
-                }}
-              >
-                测了一下躺平指数，我居然是「{data.scores.level.name}」😂 {data.scores.level.description}，你们呢？
-              </p>
-            </div>
+                {/* 保存到相册按钮 */}
+                <button
+                  onClick={handleSaveToAlbum}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  保存到相册
+                </button>
 
-            <button
-              onClick={handleSaveImage}
-              disabled={generatingImage}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
-            >
-              {generatingImage ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  {shareImageUrl ? '重新生成图片' : '生成分享图片'}
-                </>
-              )}
-            </button>
+                <p className="text-xs text-slate-400 text-center mt-3">保存后打开微信 → 朋友圈 → 发布</p>
+              </>
+            )}
           </div>
         </div>
       )}
