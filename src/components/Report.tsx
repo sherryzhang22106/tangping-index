@@ -20,6 +20,8 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
   const [renderedMarkdown, setRenderedMarkdown] = useState<string>('');
   const [showShareModal, setShowShareModal] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const shareModalRef = useRef<HTMLDivElement>(null);
+  const shareImageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (data.aiStatus === 'generating') {
@@ -119,6 +121,15 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
 
       const imageUrl = canvas.toDataURL('image/png');
       setShareImageUrl(imageUrl);
+
+      // 滚动到图片显示位置
+      setTimeout(() => {
+        if (shareImageRef.current) {
+          shareImageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (shareModalRef.current) {
+          shareModalRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
 
       // 检测是否在微信内
       const isWechat = /micromessenger/i.test(navigator.userAgent);
@@ -422,11 +433,11 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
 
       {/* 分享弹窗 */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-12 overflow-y-auto" onClick={() => setShowShareModal(false)}>
+        <div ref={shareModalRef} className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-12 overflow-y-auto" onClick={() => setShowShareModal(false)}>
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
             {/* 生成的图片优先显示在顶部 */}
             {shareImageUrl && (
-              <div className="mb-4">
+              <div ref={shareImageRef} className="mb-4">
                 <p className="text-sm text-green-600 font-bold text-center mb-2">👇 长按图片保存到相册</p>
                 <img
                   src={shareImageUrl}
