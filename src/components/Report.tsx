@@ -6,19 +6,24 @@ import { parse } from 'marked';
 import DOMPurify from 'dompurify';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
+import PaymentModal from './PaymentModal';
 
 interface Props {
   data: ReportData;
   assessmentId?: string;
+  hasPaidForAI?: boolean;
+  onAIPaymentSuccess?: () => void;
   onRefreshAI?: () => void;
   onMeToo?: () => void;
+  visitorId?: string;
 }
 
-const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) => {
+const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPaymentSuccess, onRefreshAI, onMeToo, visitorId }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [openSection, setOpenSection] = useState<number | null>(0);
   const [renderedMarkdown, setRenderedMarkdown] = useState<string>('');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showAIPaymentModal, setShowAIPaymentModal] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
   const shareModalRef = useRef<HTMLDivElement>(null);
   const shareImageRef = useRef<HTMLDivElement>(null);
@@ -368,12 +373,14 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
             AI 知己：你的躺平深度分析
           </h3>
 
-          {data.aiStatus === 'completed' ? (
+          {/* AI已解锁且完成 */}
+          {hasPaidForAI && data.aiStatus === 'completed' ? (
             <article
               className="report-markdown"
               dangerouslySetInnerHTML={{ __html: renderedMarkdown }}
             />
-          ) : (
+          ) : hasPaidForAI && data.aiStatus === 'generating' ? (
+            /* AI已解锁，正在生成 */
             <div className="text-center py-32 space-y-12">
               <div className="relative w-48 h-48 mx-auto">
                 <div className="absolute inset-0 border-[16px] border-orange-100/50 rounded-full"></div>
@@ -387,6 +394,65 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
                 <h4 className="text-2xl font-black text-slate-800 tracking-tight">正在撰写约 3000 字的个性化分析...</h4>
                 <p className="text-slate-400 font-medium max-w-md mx-auto">AI 知己正在分析你的五大维度数据，判断你的躺平类型，并给出针对性建议。</p>
               </div>
+            </div>
+          ) : hasPaidForAI && data.aiStatus === 'failed' ? (
+            /* AI已解锁，生成失败 */
+            <div className="text-center py-16 space-y-6">
+              <div className="text-6xl">😢</div>
+              <h4 className="text-xl font-black text-slate-800">AI分析生成失败</h4>
+              <p className="text-slate-500">请点击下方按钮重试</p>
+              <button
+                onClick={onRefreshAI}
+                className="px-8 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-all"
+              >
+                重新生成
+              </button>
+            </div>
+          ) : (
+            /* AI未解锁 - 显示付费解锁界面 */
+            <div className="text-center py-12 space-y-8">
+              <div className="text-6xl">🔒</div>
+              <div className="space-y-3">
+                <h4 className="text-2xl font-black text-slate-800">想了解你的躺平心理深度分析？</h4>
+                <p className="text-slate-500 max-w-md mx-auto">解锁AI专属报告，获取3000字个性化分析和改善建议</p>
+              </div>
+
+              {/* 功能预览 */}
+              <div className="grid grid-cols-2 gap-4 max-w-md mx-auto text-left">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>3000字深度分析</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>个性化建议</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>心理状态解读</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>专属改善方案</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowAIPaymentModal(true)}
+                className="px-10 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-black text-lg shadow-xl shadow-orange-200 hover:shadow-orange-300 transition-all"
+              >
+                ¥1 解锁AI深度分析
+              </button>
+
+              <p className="text-xs text-slate-400">基础报告免费 · 分享功能不受影响</p>
             </div>
           )}
         </section>
@@ -558,6 +624,20 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
             )}
           </div>
         </div>
+      )}
+
+      {/* AI付费解锁弹窗 */}
+      {showAIPaymentModal && visitorId && (
+        <PaymentModal
+          type="ai"
+          price={1}
+          visitorId={visitorId}
+          onPaymentSuccess={() => {
+            setShowAIPaymentModal(false);
+            onAIPaymentSuccess?.();
+          }}
+          onClose={() => setShowAIPaymentModal(false)}
+        />
       )}
     </div>
   );

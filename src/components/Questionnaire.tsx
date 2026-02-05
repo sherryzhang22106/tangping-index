@@ -2,17 +2,34 @@
 import React, { useState, useEffect } from 'react';
 import { AssessmentResponse, Question } from '../types';
 import { QUESTIONS } from '../constants';
+import PaymentModal from './PaymentModal';
 
 interface Props {
   responses: AssessmentResponse;
   setResponses: React.Dispatch<React.SetStateAction<AssessmentResponse>>;
   onSubmit: () => void;
   loading: boolean;
+  hasPaidForTest: boolean;
+  onPaymentSuccess: () => void;
+  onCodeSuccess: (code: string) => Promise<boolean>;
+  visitorId: string;
 }
 
-const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loading }) => {
+const FREE_QUESTIONS_COUNT = 10; // 前10题免费
+
+const Questionnaire: React.FC<Props> = ({
+  responses,
+  setResponses,
+  onSubmit,
+  loading,
+  hasPaidForTest,
+  onPaymentSuccess,
+  onCodeSuccess,
+  visitorId
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -28,6 +45,12 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
   };
 
   const handleNext = () => {
+    // 检查是否需要付费（第10题答完后，进入第11题前）
+    if (currentIndex === FREE_QUESTIONS_COUNT - 1 && !hasPaidForTest) {
+      setShowPaymentModal(true);
+      return;
+    }
+
     if (currentIndex < QUESTIONS.length - 1) {
       setDirection('next');
       setCurrentIndex(prev => prev + 1);
@@ -43,10 +66,27 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
     }
   };
 
+  const handlePaymentComplete = () => {
+    setShowPaymentModal(false);
+    onPaymentSuccess();
+    // 继续到下一题
+    setDirection('next');
+    setCurrentIndex(prev => prev + 1);
+  };
+
+  const handleCodeComplete = async (code: string) => {
+    const success = await onCodeSuccess(code);
+    if (success) {
+      setShowPaymentModal(false);
+      // 继续到下一题
+      setDirection('next');
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
   const isCurrentComplete = () => {
     const val = responses[currentQuestion.id];
     if (currentQuestion.type === 'OPEN') {
-      // 开放题不限制最少字数，有内容即可
       return val && val.length > 0;
     }
     return val !== undefined && val !== '';
@@ -108,6 +148,9 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
             <span className={`text-xs font-bold ${moduleInfo.color}`}>
               {moduleInfo.name}
             </span>
+            {currentIndex < FREE_QUESTIONS_COUNT && !hasPaidForTest && (
+              <span className="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold">免费体验</span>
+            )}
           </div>
         </div>
         <div className="text-right">
@@ -194,6 +237,18 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
           )}
         </div>
       </div>
+
+      {/* 付费解锁弹窗 */}
+      {showPaymentModal && (
+        <PaymentModal
+          type="test"
+          price={1.9}
+          visitorId={visitorId}
+          onPaymentSuccess={handlePaymentComplete}
+          onCodeSuccess={handleCodeComplete}
+          onClose={() => setShowPaymentModal(false)}
+        />
+      )}
     </div>
   );
 };

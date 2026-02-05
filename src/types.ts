@@ -81,7 +81,7 @@ export interface ReportData {
   scores: Scores;
   baseInfo?: BaseInfo;
   openAnswers?: OpenAnswers;
-  aiStatus?: 'pending' | 'generating' | 'completed' | 'failed';
+  aiStatus?: 'pending' | 'generating' | 'completed' | 'failed' | 'locked';
   aiAnalysis?: string;
   aiGeneratedAt?: string;
   aiWordCount?: number;

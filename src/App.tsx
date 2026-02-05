@@ -18,20 +18,16 @@ import AdminCodes from './pages/admin/Codes';
 import AdminAssessments from './pages/admin/Assessments';
 import ReportView from './pages/ReportView';
 
-type AppState = 'LANDING' | 'ACTIVATION' | 'ACTIVE' | 'REPORT';
+type AppState = 'LANDING' | 'ACTIVE' | 'REPORT';
 
 const MainApp: React.FC = () => {
-  // 检查URL参数决定初始状态
-  const getInitialState = (): AppState => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('pay') || urlParams.get('code')) {
-      return 'ACTIVATION';
-    }
-    return 'LANDING';
-  };
-
-  const [appState, setAppState] = useState<AppState>(getInitialState);
-  const [activeCode, setActiveCode] = useState<string | null>(null);
+  const [appState, setAppState] = useState<AppState>('LANDING');
+  const [hasPaidForTest, setHasPaidForTest] = useState<boolean>(() => {
+    return localStorage.getItem('tangping_paid_test') === 'true';
+  });
+  const [hasPaidForAI, setHasPaidForAI] = useState<boolean>(() => {
+    return localStorage.getItem('tangping_paid_ai') === 'true';
+  });
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [userId] = useState<string>(() => {
     const id = localStorage.getItem('growth_barrier_uid');
@@ -50,10 +46,6 @@ const MainApp: React.FC = () => {
 
   useEffect(() => {
     const checkProgress = async () => {
-      // 只有当用户之前已经激活过（有激活码记录）才提示恢复进度
-      const hasActiveCode = localStorage.getItem('growth_barrier_active_code');
-      if (!hasActiveCode) return;
-
       const saved = await api.getProgress(userId);
       if (saved && Object.keys(saved.responses).length > 0) {
         if (appState === 'LANDING') {
@@ -69,37 +61,44 @@ const MainApp: React.FC = () => {
     if (pendingProgress) {
       setResponses(pendingProgress.responses);
       setAppState('ACTIVE');
-      setActiveCode(localStorage.getItem('growth_barrier_active_code') || '已恢复');
     }
     setShowRecovery(false);
   };
 
   const handleStartFresh = () => {
     api.saveProgress(userId, 0, {});
-    localStorage.removeItem('growth_barrier_active_code');
     setShowRecovery(false);
   };
 
-  const handlePaymentSuccess = (visitorId: string) => {
-    // 支付成功后直接进入测评
-    setActiveCode('PAID_' + Date.now());
-    localStorage.setItem('growth_barrier_active_code', 'PAID');
-    setAppState('ACTIVE');
-    toast.success('支付成功，开始测评！');
+  // 测评付费成功（1.9元）
+  const handleTestPaymentSuccess = () => {
+    setHasPaidForTest(true);
+    localStorage.setItem('tangping_paid_test', 'true');
+    toast.success('支付成功，继续测评！');
   };
 
-  const handleActivation = async (code: string) => {
-    setLoading(true);
+  // 测评兑换码验证成功
+  const handleTestCodeSuccess = async (code: string) => {
     const result = await api.validateCode(code, userId);
-    setLoading(false);
-
     if (result.success) {
-      setActiveCode(code);
-      localStorage.setItem('growth_barrier_active_code', code);
-      setAppState('ACTIVE');
-      toast.success('兑换码激活成功');
+      setHasPaidForTest(true);
+      localStorage.setItem('tangping_paid_test', 'true');
+      toast.success('兑换码激活成功！');
+      return true;
     } else {
-      toast.error(result.message || '激活失败');
+      toast.error(result.message || '兑换码无效');
+      return false;
+    }
+  };
+
+  // AI报告付费成功（1元）
+  const handleAIPaymentSuccess = () => {
+    setHasPaidForAI(true);
+    localStorage.setItem('tangping_paid_ai', 'true');
+    toast.success('解锁成功！');
+    // 触发AI分析
+    if (assessmentId && report) {
+      triggerAIAnalysis(assessmentId, report.scores, responses);
     }
   };
 
@@ -108,8 +107,6 @@ const MainApp: React.FC = () => {
       setReport(prev => prev ? { ...prev, aiStatus: 'generating' } : null);
 
       const userData = formatUserDataForAI(currentResponses, scores);
-
-      // Call secure backend API for AI analysis
       const result = await api.triggerAIAnalysis(id, userData);
 
       if (result.success) {
@@ -134,17 +131,20 @@ const MainApp: React.FC = () => {
     setLoading(true);
     try {
       const finalScores = scoring.calculateScores(responses);
-      const submitResult = await api.submitAssessment(userId, activeCode!, responses, finalScores);
+      const submitResult = await api.submitAssessment(userId, 'FREE_TEST', responses, finalScores);
       if (submitResult.success && submitResult.id) {
         setAssessmentId(submitResult.id);
         const basicReport = {
           scores: finalScores,
-          aiStatus: 'pending' as const
+          aiStatus: hasPaidForAI ? 'pending' as const : 'locked' as const
         };
         setReport(basicReport);
         setAppState('REPORT');
-        localStorage.removeItem('growth_barrier_active_code');
-        triggerAIAnalysis(submitResult.id, finalScores, responses);
+
+        // 如果已付费AI，自动触发AI分析
+        if (hasPaidForAI) {
+          triggerAIAnalysis(submitResult.id, finalScores, responses);
+        }
       } else {
         toast.error(submitResult.message || '提交失败');
       }
@@ -160,9 +160,7 @@ const MainApp: React.FC = () => {
     setAppState('LANDING');
     setReport(null);
     setResponses({});
-    setActiveCode(null);
     setAssessmentId(null);
-    localStorage.removeItem('growth_barrier_active_code');
   };
 
   return (
@@ -193,27 +191,35 @@ const MainApp: React.FC = () => {
 
       <main className="flex-grow w-full py-8">
         <div className="max-w-5xl mx-auto px-4">
-          {appState === 'LANDING' && <Landing onStart={() => setAppState('ACTIVATION')} />}
-          {appState === 'ACTIVATION' && (
-            <CodeActivation
-              onActivate={handleActivation}
-              onPaymentSuccess={handlePaymentSuccess}
-              onBack={() => setAppState('LANDING')}
+          {appState === 'LANDING' && <Landing onStart={() => setAppState('ACTIVE')} />}
+          {appState === 'ACTIVE' && (
+            <Questionnaire
+              responses={responses}
+              setResponses={(updater) => {
+                setResponses(prev => {
+                  const next = typeof updater === 'function' ? updater(prev) : updater;
+                  api.saveProgress(userId, 0, next);
+                  return next;
+                });
+              }}
+              onSubmit={handleSubmit}
               loading={loading}
+              hasPaidForTest={hasPaidForTest}
+              onPaymentSuccess={handleTestPaymentSuccess}
+              onCodeSuccess={handleTestCodeSuccess}
               visitorId={userId}
             />
           )}
-          {appState === 'ACTIVE' && (
-            <Questionnaire responses={responses} setResponses={(updater) => {
-              setResponses(prev => {
-                const next = typeof updater === 'function' ? updater(prev) : updater;
-                api.saveProgress(userId, 0, next);
-                return next;
-              });
-            }} onSubmit={handleSubmit} loading={loading} />
-          )}
           {appState === 'REPORT' && report && (
-            <Report data={report} assessmentId={assessmentId || undefined} onRefreshAI={() => assessmentId && triggerAIAnalysis(assessmentId, report.scores, responses)} onMeToo={resetToHome} />
+            <Report
+              data={report}
+              assessmentId={assessmentId || undefined}
+              hasPaidForAI={hasPaidForAI}
+              onAIPaymentSuccess={handleAIPaymentSuccess}
+              onRefreshAI={() => assessmentId && hasPaidForAI && triggerAIAnalysis(assessmentId, report.scores, responses)}
+              onMeToo={resetToHome}
+              visitorId={userId}
+            />
           )}
         </div>
       </main>
