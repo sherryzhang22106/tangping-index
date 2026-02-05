@@ -103,9 +103,13 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
     alert('报告链接已复制！发送给朋友即可查看你的躺平报告');
   };
 
+  const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
+  const [generatingImage, setGeneratingImage] = useState(false);
+
   const handleSaveImage = async () => {
     if (!shareCardRef.current) return;
 
+    setGeneratingImage(true);
     try {
       const canvas = await html2canvas(shareCardRef.current, {
         scale: 2,
@@ -113,14 +117,27 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
         backgroundColor: null,
       });
 
-      // 转换为图片并下载
-      const link = document.createElement('a');
-      link.download = `躺平指数-${data.scores.level.name}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      const imageUrl = canvas.toDataURL('image/png');
+      setShareImageUrl(imageUrl);
+
+      // 检测是否在微信内
+      const isWechat = /micromessenger/i.test(navigator.userAgent);
+
+      if (isWechat) {
+        // 微信内：显示图片让用户长按保存
+        // 图片已经设置到 shareImageUrl，会显示在弹窗中
+      } else {
+        // 非微信：直接下载
+        const link = document.createElement('a');
+        link.download = `躺平指数-${data.scores.level.name}.png`;
+        link.href = imageUrl;
+        link.click();
+      }
     } catch (error) {
       console.error('Save image error:', error);
-      alert('保存图片失败，请尝试截图保存');
+      alert('生成图片失败，请尝试截图保存');
+    } finally {
+      setGeneratingImage(false);
     }
   };
 
@@ -491,12 +508,37 @@ const Report: React.FC<Props> = ({ data, assessmentId, onRefreshAI, onMeToo }) =
               </p>
             </div>
 
+            {/* 生成的图片（微信内长按保存） */}
+            {shareImageUrl && (
+              <div className="mb-4">
+                <p className="text-sm text-green-600 font-bold text-center mb-2">👇 长按图片保存到相册</p>
+                <img
+                  src={shareImageUrl}
+                  alt="分享图片"
+                  className="w-full rounded-xl shadow-lg"
+                />
+              </div>
+            )}
+
             <button
               onClick={handleSaveImage}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg"
+              disabled={generatingImage}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-              保存分享图片
+              {generatingImage ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  生成中...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  {shareImageUrl ? '重新生成图片' : '生成分享图片'}
+                </>
+              )}
             </button>
           </div>
         </div>

@@ -46,7 +46,8 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
   const isCurrentComplete = () => {
     const val = responses[currentQuestion.id];
     if (currentQuestion.type === 'OPEN') {
-      return val && val.length >= 5;
+      // 开放题不限制最少字数，有内容即可
+      return val && val.length > 0;
     }
     return val !== undefined && val !== '';
   };
@@ -96,8 +97,8 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
   };
 
   return (
-    <div className="max-w-2xl mx-auto min-h-[60vh] flex flex-col justify-center py-6">
-      <div className="mb-10 flex items-center justify-between">
+    <div className="max-w-2xl mx-auto min-h-[60vh] flex flex-col justify-center py-4 px-2">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex flex-col">
           <span className="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] mb-1">
             第 {currentIndex + 1} / {QUESTIONS.length} 题
@@ -118,27 +119,27 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
 
       <div
         key={currentQuestion.id}
-        className={`bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl shadow-orange-100 border border-slate-50 relative overflow-hidden transition-all duration-500 animate-in fade-in slide-in-from-${direction === 'next' ? 'right' : 'left'}-8`}
+        className={`bg-white p-6 md:p-10 rounded-[2rem] shadow-xl shadow-orange-100 border border-slate-50 relative overflow-hidden transition-all duration-500 animate-in fade-in slide-in-from-${direction === 'next' ? 'right' : 'left'}-8`}
       >
         <div className="absolute top-0 left-0 w-2 h-full bg-orange-500/10"></div>
-        <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight mb-10">
+        <h2 className="text-xl md:text-2xl font-black text-slate-900 leading-tight mb-6">
           {currentQuestion.text}
         </h2>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {currentQuestion.type === 'CHOICE' && (
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {currentQuestion.options?.map((opt, idx) => {
                 const isSelected = responses[currentQuestion.id] === idx;
                 return (
                   <button key={idx} onClick={() => handleResponse(currentQuestion.id, idx)}
-                    className={`text-left px-8 py-6 rounded-2xl border-2 transition-all flex items-center gap-5 group ${
-                      isSelected ? 'border-orange-500 bg-orange-500 text-white shadow-xl' : 'border-slate-50 bg-slate-50/50 text-slate-600 hover:border-orange-100'
+                    className={`text-left px-5 py-4 rounded-xl border-2 transition-all flex items-center gap-4 group ${
+                      isSelected ? 'border-orange-500 bg-orange-500 text-white shadow-lg' : 'border-slate-50 bg-slate-50/50 text-slate-600 hover:border-orange-100'
                     }`}>
-                    <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-white/30 bg-white/20' : 'border-slate-200'}`}>
+                    <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center shrink-0 text-sm ${isSelected ? 'border-white/30 bg-white/20' : 'border-slate-200'}`}>
                       {isSelected ? '✓' : String.fromCharCode(65 + idx)}
                     </div>
-                    <span className="font-bold text-lg leading-snug">{opt.label}</span>
+                    <span className="font-bold text-base leading-snug">{opt.label}</span>
                   </button>
                 );
               })}
@@ -146,18 +147,17 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
           )}
 
           {currentQuestion.type === 'OPEN' && (
-            <div className="space-y-6">
-              <textarea autoFocus className="w-full h-48 px-8 py-6 rounded-3xl border-2 border-slate-50 bg-slate-50/50 focus:bg-white focus:border-orange-400 transition-all outline-none resize-none text-slate-800 text-lg font-medium"
+            <div className="space-y-4">
+              <textarea autoFocus className="w-full h-32 px-5 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/50 focus:bg-white focus:border-orange-400 transition-all outline-none resize-none text-slate-800 text-base font-medium"
                 placeholder={openQuestionPlaceholders[currentQuestion.id] || "请坦诚地写下你的想法..."}
                 value={responses[currentQuestion.id] || ''}
                 maxLength={500}
                 onChange={(e) => handleResponse(currentQuestion.id, e.target.value)}
               />
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black text-slate-300 uppercase">建议输入 10-500 字</span>
+                <span className="text-[10px] font-black text-slate-300 uppercase">随便写点什么</span>
                 <span className={`text-xs font-black ${
-                  (responses[currentQuestion.id]?.length || 0) < 10 ? 'text-slate-300' :
-                  (responses[currentQuestion.id]?.length || 0) > 450 ? 'text-amber-500' : 'text-emerald-500'
+                  (responses[currentQuestion.id]?.length || 0) > 450 ? 'text-amber-500' : 'text-slate-300'
                 }`}>
                   {responses[currentQuestion.id]?.length || 0} / 500 字
                 </span>
@@ -167,34 +167,32 @@ const Questionnaire: React.FC<Props> = ({ responses, setResponses, onSubmit, loa
         </div>
 
         {feedbacks[currentQuestion.id] && responses[currentQuestion.id] !== undefined && (
-          <div className="mt-10 p-6 bg-orange-50/50 rounded-[2rem] border border-orange-100 flex gap-4 animate-in fade-in zoom-in">
-            <span className="text-2xl">💡</span>
+          <div className="mt-6 p-4 bg-orange-50/50 rounded-xl border border-orange-100 flex gap-3 animate-in fade-in zoom-in">
+            <span className="text-xl">💡</span>
             <p className="text-sm text-orange-800 font-bold italic leading-relaxed">{feedbacks[currentQuestion.id]}</p>
           </div>
         )}
       </div>
 
-      <div className="mt-12 flex flex-col items-center gap-6">
-        <div className="w-full flex justify-between items-center px-4">
+      <div className="mt-8 flex flex-col items-center gap-4">
+        <div className="w-full flex justify-between items-center px-2">
           <button onClick={handlePrev} disabled={currentIndex === 0}
-            className="flex items-center gap-3 px-6 py-4 rounded-2xl font-black text-slate-300 hover:text-orange-600 transition-all disabled:opacity-0"
+            className="flex items-center gap-2 px-4 py-3 rounded-xl font-black text-slate-300 hover:text-orange-600 transition-all disabled:opacity-0"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
-            <span className="font-bold">返回</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" /></svg>
           </button>
 
           {(currentQuestion.type !== 'CHOICE' || currentIndex === QUESTIONS.length - 1) && (
             <button onClick={handleNext} disabled={!isCurrentComplete()}
-              className={`flex items-center gap-3 px-12 py-5 rounded-[2rem] font-black text-white transition-all shadow-2xl disabled:opacity-50 ${
+              className={`flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-white transition-all shadow-xl disabled:opacity-50 ${
                 currentIndex === QUESTIONS.length - 1 ? 'bg-emerald-600 shadow-emerald-200' : 'bg-orange-500 shadow-orange-200'
               }`}
             >
-              <span className="text-lg">{currentIndex === QUESTIONS.length - 1 ? '生成躺平报告' : '下一题'}</span>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
+              <span className="text-base">{currentIndex === QUESTIONS.length - 1 ? '生成报告' : '下一题'}</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M9 5l7 7-7 7" /></svg>
             </button>
           )}
         </div>
-        <p className="text-[10px] text-slate-300 font-black tracking-widest uppercase">进度实时保存中</p>
       </div>
     </div>
   );

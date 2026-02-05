@@ -21,7 +21,16 @@ import ReportView from './pages/ReportView';
 type AppState = 'LANDING' | 'ACTIVATION' | 'ACTIVE' | 'REPORT';
 
 const MainApp: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>('LANDING');
+  // 检查URL参数决定初始状态
+  const getInitialState = (): AppState => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('pay') || urlParams.get('code')) {
+      return 'ACTIVATION';
+    }
+    return 'LANDING';
+  };
+
+  const [appState, setAppState] = useState<AppState>(getInitialState);
   const [activeCode, setActiveCode] = useState<string | null>(null);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
   const [userId] = useState<string>(() => {
