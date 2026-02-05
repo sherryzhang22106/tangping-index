@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 
+const APPID = process.env.WECHAT_APPID || 'wx767495c6a6f841c2';
 const MCHID = process.env.WECHAT_MCHID || '1737651976';
 const API_KEY = process.env.WECHAT_API_KEY || '';
 const SERIAL_NO = process.env.WECHAT_SERIAL_NO || '7C26A3FC97A9933F59D6D1B988FDEEB0FD791AF5';
@@ -51,7 +52,7 @@ async function createPayment(visitorId: string): Promise<any> {
   const nonceStr = generateNonceStr();
 
   const requestBody = {
-    appid: 'wx_native',
+    appid: APPID,
     mchid: MCHID,
     description: '躺平指数测评',
     out_trade_no: orderNo,
