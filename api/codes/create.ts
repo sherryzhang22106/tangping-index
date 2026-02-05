@@ -1,7 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-// 简单的内存存储（生产环境应使用数据库）
-// 这里我们使用文件系统或环境变量来持久化
+import { addCodes, CodeRecord } from '../../shared/codes-store';
 
 function generateCode(prefix: string): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -54,18 +52,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 生成兑换码
     const codes: string[] = [];
+    const codeRecords: CodeRecord[] = [];
     const now = new Date();
     const expiresAt = expiresInDays
       ? new Date(now.getTime() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
-      : null;
+      : undefined;
 
     for (let i = 0; i < actualCount; i++) {
-      codes.push(generateCode(prefix + '-'));
+      const code = generateCode(prefix + '-');
+      codes.push(code);
+      codeRecords.push({
+        code,
+        packageType,
+        status: 'UNUSED',
+        createdAt: now.toISOString(),
+        expiresAt,
+      });
     }
 
-    // 注意：这里只是生成兑换码并返回
-    // 实际验证兑换码时会在 validate.ts 中处理
-    // 生产环境应该将这些码存入数据库
+    // 保存到存储
+    addCodes(codeRecords);
 
     return res.status(200).json({
       success: true,
@@ -73,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         codes,
         count: codes.length,
         packageType,
-        expiresAt,
+        expiresAt: expiresAt || null,
         createdAt: now.toISOString(),
       },
     });
