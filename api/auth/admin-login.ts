@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateToken, verifyPassword } from '../../shared/auth';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 设置 CORS
@@ -16,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body || {};
 
     if (!username || !password) {
       return res.status(400).json({ error: '请提供用户名和密码' });
@@ -24,34 +23,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 使用环境变量验证管理员
     const envUsername = process.env.ADMIN_USERNAME || 'admin';
-    const envPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+    const envPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
-    // 如果没有配置密码哈希，使用简单密码验证（仅用于测试）
-    if (!envPasswordHash) {
-      const defaultPassword = process.env.ADMIN_PASSWORD || 'admin123';
-      if (username === envUsername && password === defaultPassword) {
-        const token = generateToken(username);
-        return res.status(200).json({
-          success: true,
-          token,
-          username,
-        });
-      }
-    } else {
-      // 使用哈希密码验证
-      if (username === envUsername && verifyPassword(password, envPasswordHash)) {
-        const token = generateToken(username);
-        return res.status(200).json({
-          success: true,
-          token,
-          username,
-        });
-      }
+    if (username === envUsername && password === envPassword) {
+      // 简单的token生成（base64编码）
+      const tokenData = {
+        username,
+        exp: Date.now() + 24 * 60 * 60 * 1000, // 24小时后过期
+      };
+      const token = Buffer.from(JSON.stringify(tokenData)).toString('base64');
+
+      return res.status(200).json({
+        success: true,
+        token,
+        username,
+      });
     }
 
     return res.status(401).json({ error: '用户名或密码错误' });
   } catch (error) {
     console.error('Admin login error:', error);
-    return res.status(500).json({ error: '服务器错误' });
+    return res.status(500).json({ error: '服务器错误', details: String(error) });
   }
 }
