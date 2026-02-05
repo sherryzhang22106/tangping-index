@@ -6,6 +6,7 @@ const MCHID = process.env.WECHAT_MCHID || '1737651976';
 const API_KEY = process.env.WECHAT_API_KEY || '';
 const SERIAL_NO = process.env.WECHAT_SERIAL_NO || '7C26A3FC97A9933F59D6D1B988FDEEB0FD791AF5';
 const PRIVATE_KEY = process.env.WECHAT_PRIVATE_KEY || '';
+const APP_SECRET = process.env.WECHAT_APP_SECRET || '';
 const NOTIFY_URL = process.env.WECHAT_NOTIFY_URL || 'https://lying.bettermee.cn/api/payment';
 
 // 生成随机字符串
@@ -18,19 +19,21 @@ function generateNonceStr(length = 32): string {
   return result;
 }
 
-// 生成签名
-function generateSignature(method: string, url: string, timestamp: string, nonceStr: string, body: string): string {
-  const message = `${method}\n${url}\n${timestamp}\n${nonceStr}\n${body}\n`;
-
+// 获取私钥
+function getPrivateKey(): string {
   let privateKey = PRIVATE_KEY;
   if (!privateKey.includes('-----BEGIN')) {
     privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
   }
-  privateKey = privateKey.replace(/\\n/g, '\n');
+  return privateKey.replace(/\\n/g, '\n');
+}
 
+// 生成签名
+function generateSignature(method: string, url: string, timestamp: string, nonceStr: string, body: string): string {
+  const message = `${method}\n${url}\n${timestamp}\n${nonceStr}\n${body}\n`;
   const sign = crypto.createSign('RSA-SHA256');
   sign.update(message);
-  return sign.sign(privateKey, 'base64');
+  return sign.sign(getPrivateKey(), 'base64');
 }
 
 // 生成订单号
@@ -41,8 +44,26 @@ function generateOrderNo(): string {
   return `TP${dateStr}${random}`;
 }
 
-// 创建支付订单
-async function createPayment(visitorId: string): Promise<any> {
+// 通过 code 获取 openid
+async function getOpenId(code: string): Promise<string> {
+  if (!APP_SECRET) {
+    throw new Error('缺少APP_SECRET配置');
+  }
+
+  const url = `https://api.weixin.qq.com/sns/oauth2/access_token?appid=${APPID}&secret=${APP_SECRET}&code=${code}&grant_type=authorization_code`;
+  const response = await fetch(url);
+  const result = await response.json();
+
+  if (result.errcode) {
+    console.error('获取openid失败:', result);
+    throw new Error(result.errmsg || '获取用户信息失败');
+  }
+
+  return result.openid;
+}
+
+// 创建 Native 支付订单（PC扫码）
+async function createNativePayment(visitorId: string): Promise<any> {
   if (!PRIVATE_KEY || !API_KEY) {
     throw new Error('支付配置未完成');
   }
@@ -59,7 +80,7 @@ async function createPayment(visitorId: string): Promise<any> {
     time_expire: new Date(Date.now() + 30 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, '+08:00'),
     notify_url: NOTIFY_URL,
     amount: {
-      total: 10, // 0.1元 = 10分
+      total: 10,
       currency: 'CNY'
     },
     attach: visitorId
@@ -68,7 +89,6 @@ async function createPayment(visitorId: string): Promise<any> {
   const bodyStr = JSON.stringify(requestBody);
   const urlPath = '/v3/pay/transactions/native';
   const signature = generateSignature('POST', urlPath, timestamp, nonceStr, bodyStr);
-
   const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${MCHID}",nonce_str="${nonceStr}",signature="${signature}",timestamp="${timestamp}",serial_no="${SERIAL_NO}"`;
 
   const response = await fetch('https://api.mch.weixin.qq.com/v3/pay/transactions/native', {
@@ -84,6 +104,7 @@ async function createPayment(visitorId: string): Promise<any> {
   const result = await response.json();
 
   if (!response.ok) {
+    console.error('Native支付创建失败:', result);
     throw new Error(result.message || '创建支付订单失败');
   }
 
@@ -92,6 +113,78 @@ async function createPayment(visitorId: string): Promise<any> {
     codeUrl: result.code_url,
     amount: 0.1,
     expireTime: 30 * 60
+  };
+}
+
+// 创建 JSAPI 支付订单（微信内支付）
+async function createJsapiPayment(visitorId: string, openid: string): Promise<any> {
+  if (!PRIVATE_KEY || !API_KEY) {
+    throw new Error('支付配置未完成');
+  }
+
+  const orderNo = generateOrderNo();
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonceStr = generateNonceStr();
+
+  const requestBody = {
+    appid: APPID,
+    mchid: MCHID,
+    description: '躺平指数测评',
+    out_trade_no: orderNo,
+    time_expire: new Date(Date.now() + 30 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, '+08:00'),
+    notify_url: NOTIFY_URL,
+    amount: {
+      total: 10,
+      currency: 'CNY'
+    },
+    attach: visitorId,
+    payer: {
+      openid: openid
+    }
+  };
+
+  const bodyStr = JSON.stringify(requestBody);
+  const urlPath = '/v3/pay/transactions/jsapi';
+  const signature = generateSignature('POST', urlPath, timestamp, nonceStr, bodyStr);
+  const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${MCHID}",nonce_str="${nonceStr}",signature="${signature}",timestamp="${timestamp}",serial_no="${SERIAL_NO}"`;
+
+  const response = await fetch('https://api.mch.weixin.qq.com/v3/pay/transactions/jsapi', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': authorization,
+    },
+    body: bodyStr,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    console.error('JSAPI支付创建失败:', result);
+    throw new Error(result.message || '创建支付订单失败');
+  }
+
+  // 生成前端调起支付需要的参数
+  const payTimestamp = Math.floor(Date.now() / 1000).toString();
+  const payNonceStr = generateNonceStr();
+  const packageStr = `prepay_id=${result.prepay_id}`;
+
+  // 签名
+  const payMessage = `${APPID}\n${payTimestamp}\n${payNonceStr}\n${packageStr}\n`;
+  const paySign = crypto.createSign('RSA-SHA256');
+  paySign.update(payMessage);
+  const paySignature = paySign.sign(getPrivateKey(), 'base64');
+
+  return {
+    orderNo,
+    appId: APPID,
+    timeStamp: payTimestamp,
+    nonceStr: payNonceStr,
+    package: packageStr,
+    signType: 'RSA',
+    paySign: paySignature,
+    amount: 0.1
   };
 }
 
@@ -106,15 +199,9 @@ async function queryPayment(orderNo: string): Promise<any> {
   const urlPath = `/v3/pay/transactions/out-trade-no/${orderNo}?mchid=${MCHID}`;
 
   const message = `GET\n${urlPath}\n${timestamp}\n${nonceStr}\n\n`;
-  let privateKey = PRIVATE_KEY;
-  if (!privateKey.includes('-----BEGIN')) {
-    privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
-  }
-  privateKey = privateKey.replace(/\\n/g, '\n');
-
   const sign = crypto.createSign('RSA-SHA256');
   sign.update(message);
-  const signature = sign.sign(privateKey, 'base64');
+  const signature = sign.sign(getPrivateKey(), 'base64');
 
   const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${MCHID}",nonce_str="${nonceStr}",signature="${signature}",timestamp="${timestamp}",serial_no="${SERIAL_NO}"`;
 
@@ -164,13 +251,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { action } = req.query;
 
   try {
-    // POST /api/payment?action=create - 创建支付
+    // GET /api/payment?action=oauth - 获取微信授权URL
+    if (req.method === 'GET' && action === 'oauth') {
+      const { redirect } = req.query;
+      const redirectUri = encodeURIComponent(redirect as string || 'https://lying.bettermee.cn/');
+      const state = generateNonceStr(16);
+      const oauthUrl = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${APPID}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_base&state=${state}#wechat_redirect`;
+      return res.status(200).json({ success: true, data: { url: oauthUrl } });
+    }
+
+    // POST /api/payment?action=create - 创建 Native 支付（PC扫码）
     if (req.method === 'POST' && action === 'create') {
       const { visitorId } = req.body;
       if (!visitorId) {
         return res.status(400).json({ error: '缺少用户标识' });
       }
-      const data = await createPayment(visitorId);
+      const data = await createNativePayment(visitorId);
+      return res.status(200).json({ success: true, data });
+    }
+
+    // POST /api/payment?action=jsapi - 创建 JSAPI 支付（微信内）
+    if (req.method === 'POST' && action === 'jsapi') {
+      const { visitorId, code } = req.body;
+      if (!visitorId || !code) {
+        return res.status(400).json({ error: '缺少必要参数' });
+      }
+
+      // 用 code 换取 openid
+      const openid = await getOpenId(code);
+      const data = await createJsapiPayment(visitorId, openid);
       return res.status(200).json({ success: true, data });
     }
 

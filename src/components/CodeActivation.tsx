@@ -9,6 +9,22 @@ interface Props {
   visitorId: string;
 }
 
+// 检测是否在微信内打开
+const isWechat = () => {
+  if (typeof window === 'undefined') return false;
+  const ua = navigator.userAgent.toLowerCase();
+  return ua.includes('micromessenger');
+};
+
+// 声明微信JS-SDK类型
+declare global {
+  interface Window {
+    WeixinJSBridge?: {
+      invoke: (api: string, params: any, callback: (res: any) => void) => void;
+    };
+  }
+}
+
 const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack, loading, visitorId }) => {
   const [code, setCode] = useState('');
   const [activeTab, setActiveTab] = useState<'code' | 'pay'>('pay');
@@ -17,6 +33,7 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
   const [orderNo, setOrderNo] = useState<string | null>(null);
   const [checkingPayment, setCheckingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [inWechat] = useState(isWechat());
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +42,87 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
     }
   };
 
-  // 创建支付订单
+  // 微信内 JSAPI 支付
+  const handleWechatPay = async () => {
+    setPaymentLoading(true);
+    setPaymentError(null);
+
+    try {
+      // 检查URL中是否有微信授权返回的code
+      const urlParams = new URLSearchParams(window.location.search);
+      const wxCode = urlParams.get('code');
+
+      if (!wxCode) {
+        // 没有code，需要先获取授权
+        const currentUrl = window.location.href.split('?')[0];
+        const redirectUrl = `${currentUrl}?pay=1`;
+
+        const response = await fetch(`/api/payment?action=oauth&redirect=${encodeURIComponent(redirectUrl)}`);
+        const result = await response.json();
+
+        if (result.success && result.data.url) {
+          // 跳转到微信授权页面
+          window.location.href = result.data.url;
+          return;
+        } else {
+          throw new Error('获取授权链接失败');
+        }
+      }
+
+      // 有code，创建JSAPI支付订单
+      const response = await fetch('/api/payment?action=jsapi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId, code: wxCode })
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        const payData = result.data;
+        setOrderNo(payData.orderNo);
+
+        // 清除URL中的code参数
+        window.history.replaceState({}, '', window.location.pathname);
+
+        // 调用微信支付
+        if (window.WeixinJSBridge) {
+          window.WeixinJSBridge.invoke(
+            'getBrandWCPayRequest',
+            {
+              appId: payData.appId,
+              timeStamp: payData.timeStamp,
+              nonceStr: payData.nonceStr,
+              package: payData.package,
+              signType: payData.signType,
+              paySign: payData.paySign
+            },
+            (res: any) => {
+              if (res.err_msg === 'get_brand_wcpay_request:ok') {
+                // 支付成功
+                onPaymentSuccess(visitorId);
+              } else if (res.err_msg === 'get_brand_wcpay_request:cancel') {
+                setPaymentError('支付已取消');
+              } else {
+                setPaymentError('支付失败，请重试');
+              }
+              setPaymentLoading(false);
+            }
+          );
+        } else {
+          setPaymentError('请在微信中打开');
+          setPaymentLoading(false);
+        }
+      } else {
+        throw new Error(result.error || '创建支付订单失败');
+      }
+    } catch (error: any) {
+      setPaymentError(error.message || '支付失败，请重试');
+      setPaymentLoading(false);
+    }
+  };
+
+  // PC端扫码支付
   const handleCreatePayment = async () => {
     setPaymentLoading(true);
     setPaymentError(null);
@@ -52,9 +149,21 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
     }
   };
 
-  // 轮询检查支付状态
+  // 页面加载时检查是否是微信授权回调
   useEffect(() => {
-    if (!orderNo || !qrCodeUrl) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPay = urlParams.get('pay');
+    const wxCode = urlParams.get('code');
+
+    if (inWechat && isPay && wxCode) {
+      // 是微信授权回调，自动发起支付
+      handleWechatPay();
+    }
+  }, []);
+
+  // 轮询检查支付状态（PC端扫码支付用）
+  useEffect(() => {
+    if (!orderNo || !qrCodeUrl || inWechat) return;
 
     const checkPaymentStatus = async () => {
       try {
@@ -71,9 +180,8 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
     };
 
     setCheckingPayment(true);
-    const interval = setInterval(checkPaymentStatus, 3000); // 每3秒检查一次
+    const interval = setInterval(checkPaymentStatus, 3000);
 
-    // 5分钟后停止检查
     const timeout = setTimeout(() => {
       clearInterval(interval);
       setCheckingPayment(false);
@@ -83,9 +191,9 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [orderNo, qrCodeUrl, visitorId, onPaymentSuccess]);
+  }, [orderNo, qrCodeUrl, visitorId, onPaymentSuccess, inWechat]);
 
-  // 生成二维码图片URL（使用第三方API）
+  // 生成二维码图片URL
   const getQrCodeImageUrl = (url: string) => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
   };
@@ -141,7 +249,9 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
                   </svg>
                 </div>
                 <h3 className="text-2xl font-black text-slate-900">微信支付</h3>
-                <p className="text-slate-500 mt-2">扫码支付，即刻开启测评</p>
+                <p className="text-slate-500 mt-2">
+                  {inWechat ? '点击按钮直接支付' : '扫码支付，即刻开启测评'}
+                </p>
               </div>
 
               {/* 价格展示 */}
@@ -154,37 +264,10 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
                 <p className="text-xs text-slate-400 mt-2">41道专业测评题 + AI深度分析报告</p>
               </div>
 
-              {/* 二维码区域 */}
-              {qrCodeUrl ? (
-                <div className="text-center">
-                  <div className="bg-white border-2 border-slate-100 rounded-2xl p-4 inline-block mb-4">
-                    <img
-                      src={getQrCodeImageUrl(qrCodeUrl)}
-                      alt="微信支付二维码"
-                      className="w-48 h-48"
-                    />
-                  </div>
-                  <p className="text-sm text-slate-500 mb-2">
-                    {checkingPayment ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <svg className="animate-spin h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        等待支付中...
-                      </span>
-                    ) : '请使用微信扫码支付'}
-                  </p>
-                  <button
-                    onClick={handleCreatePayment}
-                    className="text-sm text-orange-600 hover:text-orange-700 font-bold"
-                  >
-                    刷新二维码
-                  </button>
-                </div>
-              ) : (
+              {/* 微信内：直接支付按钮 */}
+              {inWechat ? (
                 <button
-                  onClick={handleCreatePayment}
+                  onClick={handleWechatPay}
                   disabled={paymentLoading}
                   className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-200 disabled:opacity-50 hover:shadow-green-300 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                 >
@@ -194,7 +277,7 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      生成支付码...
+                      处理中...
                     </>
                   ) : (
                     <>
@@ -205,6 +288,61 @@ const CodeActivation: React.FC<Props> = ({ onActivate, onPaymentSuccess, onBack,
                     </>
                   )}
                 </button>
+              ) : (
+                /* PC端：二维码支付 */
+                <>
+                  {qrCodeUrl ? (
+                    <div className="text-center">
+                      <div className="bg-white border-2 border-slate-100 rounded-2xl p-4 inline-block mb-4">
+                        <img
+                          src={getQrCodeImageUrl(qrCodeUrl)}
+                          alt="微信支付二维码"
+                          className="w-48 h-48"
+                        />
+                      </div>
+                      <p className="text-sm text-slate-500 mb-2">
+                        {checkingPayment ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            等待支付中...
+                          </span>
+                        ) : '请使用微信扫码支付'}
+                      </p>
+                      <button
+                        onClick={handleCreatePayment}
+                        className="text-sm text-orange-600 hover:text-orange-700 font-bold"
+                      >
+                        刷新二维码
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleCreatePayment}
+                      disabled={paymentLoading}
+                      className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-green-200 disabled:opacity-50 hover:shadow-green-300 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                    >
+                      {paymentLoading ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          生成支付码...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9.5 4C5.36 4 2 6.69 2 10c0 1.89 1.08 3.56 2.78 4.66L4 17l2.5-1.5C7.45 15.83 8.45 16 9.5 16c4.14 0 7.5-2.69 7.5-6S13.64 4 9.5 4z"/>
+                          </svg>
+                          立即支付 ¥0.1
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
               )}
 
               {paymentError && (
