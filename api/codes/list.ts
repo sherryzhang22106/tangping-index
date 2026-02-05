@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAllCodes } from '../../shared/codes-store';
 
 function verifyToken(token: string): boolean {
   try {
@@ -36,45 +35,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { status, page = '1', limit = '20' } = req.query;
-
-    const pageNum = Math.max(1, parseInt(page as string, 10));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10)));
-
-    // 获取所有兑换码
-    let codes = getAllCodes();
-
-    // 按状态筛选
-    if (status && status !== 'ALL') {
-      codes = codes.filter(c => c.status === status);
-    }
-
-    // 按创建时间倒序排列
-    codes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    // 分页
-    const total = codes.length;
-    const totalPages = Math.ceil(total / limitNum);
-    const skip = (pageNum - 1) * limitNum;
-    const pagedCodes = codes.slice(skip, skip + limitNum);
-
+    // 由于没有持久化存储，返回空列表
+    // 提示：生成的兑换码请导出Excel保存，任何以 TP-/LYING-/TEST-/VIP- 开头的码都有效
     return res.status(200).json({
       success: true,
-      data: pagedCodes.map(c => ({
-        code: c.code,
-        packageType: c.packageType,
-        status: c.status,
-        createdAt: c.createdAt,
-        activatedAt: c.activatedAt,
-        expiresAt: c.expiresAt,
-        assessmentCount: 0,
-      })),
+      data: [],
       pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages,
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
       },
+      message: '提示：生成的兑换码请导出Excel保存。任何以 TP-/LYING-/TEST-/VIP- 开头的码都可使用。',
     });
   } catch (error) {
     console.error('List codes error:', error);

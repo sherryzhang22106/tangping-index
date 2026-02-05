@@ -1,5 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { addCodes, CodeRecord } from '../../shared/codes-store';
+
+interface CodeRecord {
+  code: string;
+  packageType: string;
+  status: 'UNUSED' | 'ACTIVATED' | 'USED' | 'REVOKED';
+  createdAt: string;
+  expiresAt?: string;
+}
 
 function generateCode(prefix: string): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -52,26 +59,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 生成兑换码
     const codes: string[] = [];
-    const codeRecords: CodeRecord[] = [];
     const now = new Date();
     const expiresAt = expiresInDays
       ? new Date(now.getTime() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
-      : undefined;
+      : null;
 
     for (let i = 0; i < actualCount; i++) {
       const code = generateCode(prefix + '-');
       codes.push(code);
-      codeRecords.push({
-        code,
-        packageType,
-        status: 'UNUSED',
-        createdAt: now.toISOString(),
-        expiresAt,
-      });
     }
-
-    // 保存到存储
-    addCodes(codeRecords);
 
     return res.status(200).json({
       success: true,
@@ -79,7 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         codes,
         count: codes.length,
         packageType,
-        expiresAt: expiresAt || null,
+        expiresAt,
         createdAt: now.toISOString(),
       },
     });

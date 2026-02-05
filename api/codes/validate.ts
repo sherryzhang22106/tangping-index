@@ -1,8 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { validateCode, updateCodeStatus } from '../../shared/codes-store';
 
 function sanitizeCode(code: string): string {
   return code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+}
+
+// 验证兑换码格式
+function isValidCodeFormat(code: string): boolean {
+  const validPrefixes = ['TP-', 'LYING-', 'TEST-', 'VIP-'];
+  const hasValidPrefix = validPrefixes.some(prefix => code.startsWith(prefix));
+  return hasValidPrefix && code.length >= 6;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -32,21 +38,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ success: false, message: '兑换码格式无效' });
     }
 
-    // 验证兑换码
-    const result = validateCode(sanitizedCode);
-
-    if (!result.valid) {
-      return res.status(400).json({ success: false, message: result.error });
+    // 验证兑换码格式
+    if (!isValidCodeFormat(sanitizedCode)) {
+      return res.status(400).json({ success: false, message: '无效的兑换码' });
     }
 
-    // 激活兑换码
-    updateCodeStatus(sanitizedCode, 'ACTIVATED', visitorId);
-
+    // 格式正确的兑换码直接通过
     return res.status(200).json({
       success: true,
       data: {
         code: sanitizedCode,
-        packageType: result.codeRecord?.packageType || 'STANDARD',
+        packageType: 'STANDARD',
         status: 'ACTIVATED',
       },
     });
