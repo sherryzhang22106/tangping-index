@@ -565,9 +565,14 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
               <div className="text-center">
                 <p className="text-[11px] text-white/80 font-bold tracking-wider mb-4">🔬 躺平光谱研究所 · 权威认证</p>
 
-                {/* 躺在床上的小人图标 */}
+                {/* 等级对应的 emoji */}
                 <div className="flex justify-center mb-3">
-                  <div className="text-4xl">🛌</div>
+                  <div className="text-4xl">{data.scores.level.emoji}</div>
+                </div>
+
+                {/* 等级标签 */}
+                <div className="flex justify-center mb-2">
+                  <span className="text-sm bg-white/30 px-4 py-1 rounded-full font-black">{data.scores.level.level}</span>
                 </div>
 
                 {/* 我是XXX - 最显眼 */}
@@ -581,7 +586,6 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
                     <span className="text-5xl font-black">{data.scores.totalScore}</span>
                     <span className="text-lg opacity-70">/245</span>
                   </div>
-                  <p className="text-xs text-white/60 mt-1">躺得不错，继续保持</p>
                 </div>
 
                 {/* 亮点数据 - 两列 */}

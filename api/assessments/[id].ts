@@ -1,8 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { queryOne, initDatabase } from '../lib/db';
 
-// 确保数据库表存在
-let dbInitialized = false;
+// 动态导入数据库模块
+let dbModule: any = null;
+
+async function getDb() {
+  if (!dbModule) {
+    try {
+      dbModule = await import('../lib/db');
+    } catch (e) {
+      console.error('Failed to load database module:', e);
+      return null;
+    }
+  }
+  return dbModule;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -15,31 +26,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: '方法不允许' });
+    return res.status(405).json({ success: false, error: '方法不允许' });
   }
 
   try {
-    // 初始化数据库（只执行一次）
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
-    }
-
     const { id } = req.query;
 
+    console.log('Get assessment request, id:', id);
+
     if (!id || typeof id !== 'string') {
-      return res.status(400).json({ error: '缺少测评ID' });
+      return res.status(400).json({ success: false, error: '缺少测评ID' });
     }
 
-    const assessment = await queryOne(
+    const db = await getDb();
+    if (!db) {
+      return res.status(500).json({ success: false, error: '数据库服务不可用' });
+    }
+
+    // 初始化数据库
+    try {
+      await db.initDatabase();
+    } catch (initErr) {
+      console.error('Database init error:', initErr);
+    }
+
+    const assessment = await db.queryOne(
       `SELECT id, visitor_id, code, responses, scores, ai_status, ai_analysis, ai_generated_at, ai_word_count, created_at
        FROM assessments WHERE id = $1`,
       [id]
     );
 
     if (!assessment) {
-      return res.status(404).json({ error: '测评不存在' });
+      console.log('Assessment not found:', id);
+      return res.status(404).json({ success: false, error: '测评不存在' });
     }
+
+    console.log('Assessment found:', { id: assessment.id, hasScores: !!assessment.scores });
 
     return res.status(200).json({
       success: true,
@@ -58,6 +80,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     console.error('Get assessment error:', error);
-    return res.status(500).json({ error: '服务器错误' });
+    return res.status(500).json({ success: false, error: '服务器错误' });
   }
 }

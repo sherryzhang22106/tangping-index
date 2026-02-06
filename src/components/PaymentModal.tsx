@@ -298,7 +298,6 @@ const PaymentModal: React.FC<Props> = ({
                 <span className="text-sm text-orange-600">¥</span>
                 <span className="text-4xl font-black text-orange-600">{price}</span>
               </div>
-              <p className="text-center text-xs text-orange-500 mt-1">一次付费，永久有效</p>
             </div>
 
             {/* 功能列表 */}
