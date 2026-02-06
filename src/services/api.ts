@@ -51,6 +51,20 @@ async function fetchApi<T>(
 
 export const api = {
   /**
+   * Create payment order
+   */
+  createPayment: async (
+    visitorId: string,
+    amount: number,
+    description: string
+  ): Promise<{ success: boolean; payUrl?: string; jsApiParams?: any; error?: string }> => {
+    return fetchApi('/payment', {
+      method: 'POST',
+      body: JSON.stringify({ visitorId, amount, description }),
+    });
+  },
+
+  /**
    * Validate and activate a redemption code
    */
   validateCode: async (

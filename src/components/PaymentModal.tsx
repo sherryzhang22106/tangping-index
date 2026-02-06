@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { api } from '../services/api';
 
 interface Props {
   type: 'test' | 'ai';
@@ -40,29 +39,83 @@ const PaymentModal: React.FC<Props> = ({
     setError('');
 
     try {
-      // 调用支付API
-      const result = await api.createPayment(visitorId, price, type === 'test' ? '躺平测评' : 'AI分析');
+      // 检测是否在微信内
+      const isWechat = /micromessenger/i.test(navigator.userAgent);
 
-      if (result.success && result.payUrl) {
-        // 跳转到支付页面
-        window.location.href = result.payUrl;
-      } else if (result.success && result.jsApiParams) {
-        // 微信JSAPI支付
-        if (typeof WeixinJSBridge !== 'undefined') {
-          WeixinJSBridge.invoke('getBrandWCPayRequest', result.jsApiParams, (res: any) => {
-            if (res.err_msg === 'get_brand_wcpay_request:ok') {
-              onPaymentSuccess();
-            } else {
-              setError('支付取消或失败');
-            }
-          });
+      if (isWechat) {
+        // 微信内 - 需要先获取授权code，然后使用JSAPI支付
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+
+        if (!code) {
+          // 没有code，需要先跳转授权
+          const currentUrl = window.location.href.split('?')[0];
+          const redirectUrl = `${currentUrl}?pay=1&amount=${price}&type=${type}`;
+          const oauthResult = await fetch(`/api/payment?action=oauth&redirect=${encodeURIComponent(redirectUrl)}`);
+          const oauthData = await oauthResult.json();
+
+          if (oauthData.success && oauthData.data?.url) {
+            window.location.href = oauthData.data.url;
+            return;
+          } else {
+            setError('获取授权失败');
+            return;
+          }
+        }
+
+        // 有code，创建JSAPI支付
+        const result = await fetch('/api/payment?action=jsapi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visitorId, code }),
+        });
+        const data = await result.json();
+
+        if (data.success && data.data) {
+          // 调起微信支付
+          if (typeof WeixinJSBridge !== 'undefined') {
+            WeixinJSBridge.invoke('getBrandWCPayRequest', {
+              appId: data.data.appId,
+              timeStamp: data.data.timeStamp,
+              nonceStr: data.data.nonceStr,
+              package: data.data.package,
+              signType: data.data.signType,
+              paySign: data.data.paySign,
+            }, (res: any) => {
+              if (res.err_msg === 'get_brand_wcpay_request:ok') {
+                onPaymentSuccess();
+              } else {
+                setError('支付取消或失败');
+              }
+              setLoading(false);
+            });
+            return;
+          } else {
+            setError('请在微信中打开');
+          }
         } else {
-          setError('请在微信中打开');
+          setError(data.error || '创建支付失败');
         }
       } else {
-        setError(result.error || '创建支付失败');
+        // 非微信 - 使用Native支付（扫码）
+        const result = await fetch('/api/payment?action=create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visitorId }),
+        });
+        const data = await result.json();
+
+        if (data.success && data.data?.codeUrl) {
+          // 显示二维码让用户扫码支付
+          // 这里简化处理，直接跳转
+          window.open(data.data.codeUrl, '_blank');
+          setError('请使用微信扫码支付，支付完成后点击"我已支付"');
+        } else {
+          setError(data.error || '创建支付失败');
+        }
       }
     } catch (err) {
+      console.error('Payment error:', err);
       setError('网络错误，请重试');
     } finally {
       setLoading(false);
