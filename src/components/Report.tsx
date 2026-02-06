@@ -273,19 +273,7 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
             </div>
           </div>
 
-          {/* 仰卧起坐型标签 */}
-          {data.scores.yangWoQiZuo.type === 'yangwoqizuo' && (
-            <div className="mt-8 bg-white/95 backdrop-blur-xl rounded-2xl p-6 shadow-lg">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-2xl">🔄</span>
-                <span className="text-lg font-black text-slate-800">仰卧起坐型</span>
-                <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">{data.scores.yangWoQiZuo.subtype}</span>
-              </div>
-              <p className="text-slate-600 text-sm">{data.scores.yangWoQiZuo.description} - 时而努力时而躺平，在两者之间反复横跳</p>
-            </div>
-          )}
-
-          {/* 四个指标卡片 - 优化配色和说明 */}
+          {/* 四个指标卡片 - 2x2布局 */}
           <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 shadow-lg">
               <span className="text-[10px] font-black text-orange-500 uppercase tracking-wider">🔥 最躺的方面</span>
@@ -350,18 +338,18 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
             </div>
           </div>
 
-          {/* 维度详情卡片 - 优化显示 */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* 维度详情卡片 - 横排紧凑显示 */}
+          <div className="mt-8 grid grid-cols-5 gap-2">
             {barData.map((dim, idx) => {
               const level = getTangpingLevel(dim.value);
               return (
-                <div key={dim.name} className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx] }}></div>
-                    <span className="text-xs font-bold text-slate-500">{dim.name}</span>
+                <div key={dim.name} className="p-3 bg-white rounded-xl border border-slate-100 shadow-sm text-center">
+                  <div className="flex items-center justify-center gap-1 mb-2">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx] }}></div>
+                    <span className="text-[10px] font-bold text-slate-500">{dim.name}</span>
                   </div>
-                  <p className="text-3xl font-black text-slate-800">{dim.value.toFixed(0)}<span className="text-sm text-slate-400">%</span></p>
-                  <div className={`mt-2 inline-block px-2 py-1 rounded-lg text-xs font-bold ${level.bg} ${level.color}`}>
+                  <p className="text-2xl font-black text-slate-800">{dim.value.toFixed(0)}<span className="text-xs text-slate-400">%</span></p>
+                  <div className={`mt-1 inline-block px-2 py-0.5 rounded text-[10px] font-bold ${level.bg} ${level.color}`}>
                     {level.text}
                   </div>
                 </div>
@@ -510,10 +498,10 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
         </button>
       </div>
 
-      {/* 分享弹窗 */}
+      {/* 分享弹窗 - 优化为固定在屏幕中央，图片优先显示 */}
       {showShareModal && (
-        <div ref={shareModalRef} className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-8 overflow-y-auto" onClick={() => { setShowShareModal(false); setShareImageUrl(null); }}>
-          <div className="bg-white rounded-3xl p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => { setShowShareModal(false); setShareImageUrl(null); }}>
+          <div className="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             {/* 关闭按钮 */}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-black text-slate-800">分享到朋友圈</h3>
@@ -533,15 +521,43 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
               </div>
             )}
 
-            {/* 生成的图片 */}
+            {/* 生成的图片 - 优先显示 */}
             {shareImageUrl && !generatingImage && (
-              <div ref={shareImageRef} className="mb-4">
-                <img
-                  src={shareImageUrl}
-                  alt="分享图片"
-                  className="w-full rounded-xl shadow-lg"
-                />
-              </div>
+              <>
+                <div ref={shareImageRef} className="mb-4">
+                  <img
+                    src={shareImageUrl}
+                    alt="分享图片"
+                    className="w-full rounded-xl shadow-lg"
+                  />
+                </div>
+
+                {/* 保存到相册按钮 - 紧跟图片 */}
+                <button
+                  onClick={handleSaveToAlbum}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg mb-3"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  保存到相册
+                </button>
+
+                <p className="text-xs text-slate-400 text-center mb-4">保存后打开微信 → 朋友圈 → 发布</p>
+
+                {/* 推荐文案 - 折叠显示 */}
+                <details className="mb-2">
+                  <summary className="text-xs text-amber-600 font-bold cursor-pointer">📝 点击复制推荐文案</summary>
+                  <p
+                    className="text-sm text-amber-800 cursor-pointer hover:bg-amber-100 p-2 rounded-lg transition-colors mt-2 bg-amber-50"
+                    onClick={() => {
+                      const text = `测了一下躺平指数，我居然是「${data.scores.level.name}」😂 ${data.scores.level.description}，你们呢？`;
+                      navigator.clipboard.writeText(text);
+                      alert('文案已复制！');
+                    }}
+                  >
+                    测了一下躺平指数，我居然是「{data.scores.level.name}」😂 {data.scores.level.description}，你们呢？
+                  </p>
+                </details>
+              </>
             )}
 
             {/* 分享卡片 - 用于生成图片，始终隐藏 */}
@@ -596,37 +612,6 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
                 </div>
               </div>
             </div>
-
-            {/* 图片生成后显示操作区 */}
-            {shareImageUrl && !generatingImage && (
-              <>
-                {/* 推荐文案 */}
-                <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                  <p className="text-xs text-amber-600 font-bold mb-2">📝 推荐文案（点击复制）</p>
-                  <p
-                    className="text-sm text-amber-800 cursor-pointer hover:bg-amber-100 p-2 rounded-lg transition-colors"
-                    onClick={() => {
-                      const text = `测了一下躺平指数，我居然是「${data.scores.level.name}」😂 ${data.scores.level.description}，你们呢？`;
-                      navigator.clipboard.writeText(text);
-                      alert('文案已复制！');
-                    }}
-                  >
-                    测了一下躺平指数，我居然是「{data.scores.level.name}」😂 {data.scores.level.description}，你们呢？
-                  </p>
-                </div>
-
-                {/* 保存到相册按钮 */}
-                <button
-                  onClick={handleSaveToAlbum}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                  保存到相册
-                </button>
-
-                <p className="text-xs text-slate-400 text-center mt-3">保存后打开微信 → 朋友圈 → 发布</p>
-              </>
-            )}
           </div>
         </div>
       )}

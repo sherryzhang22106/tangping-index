@@ -24,17 +24,25 @@ const ReportView: React.FC = () => {
 
       try {
         const result = await api.getAssessment(id);
-        if (result && result.scores) {
-          setReportData({
-            scores: result.scores as Scores,
-            aiStatus: result.aiStatus || 'pending',
-            aiAnalysis: result.aiAnalysis,
-            aiGeneratedAt: result.completedAt,
-          } as ReportData);
+        console.log('API result:', result);
 
-          // 检查是否需要自动下载
-          if (searchParams.get('download') === 'true') {
-            setAutoDownload(true);
+        // 处理返回的数据结构
+        if (result) {
+          const scores = result.scores || result.data?.scores;
+          if (scores) {
+            setReportData({
+              scores: scores as Scores,
+              aiStatus: result.aiStatus || result.data?.aiStatus || 'pending',
+              aiAnalysis: result.aiAnalysis || result.data?.aiAnalysis,
+              aiGeneratedAt: result.aiGeneratedAt || result.data?.aiGeneratedAt || result.completedAt,
+            } as ReportData);
+
+            // 检查是否需要自动下载
+            if (searchParams.get('download') === 'true') {
+              setAutoDownload(true);
+            }
+          } else {
+            setError('报告数据格式错误');
           }
         } else {
           setError('报告不存在或已过期');
