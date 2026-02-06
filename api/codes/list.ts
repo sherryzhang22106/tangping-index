@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import prisma from '../../shared/db';
+import prisma from '../lib/prisma';
 
 function verifyToken(token: string): boolean {
   try {

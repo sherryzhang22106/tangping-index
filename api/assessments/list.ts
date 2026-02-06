@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import prisma from '../../shared/db';
+import prisma from '../lib/prisma';
 import { withAuth } from '../../shared/auth';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
