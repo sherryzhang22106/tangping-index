@@ -1,20 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// 动态导入数据库模块
-let dbModule: any = null;
-
-async function getDb() {
-  if (!dbModule) {
-    try {
-      dbModule = await import('../lib/db');
-    } catch (e) {
-      console.error('Failed to load database module:', e);
-      return null;
-    }
-  }
-  return dbModule;
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -38,19 +23,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ success: false, error: '缺少测评ID' });
     }
 
-    const db = await getDb();
-    if (!db) {
-      return res.status(500).json({ success: false, error: '数据库服务不可用' });
+    // 检查数据库配置
+    if (!process.env.DATABASE_URL) {
+      console.error('DATABASE_URL not configured');
+      return res.status(500).json({ success: false, error: '数据库未配置' });
     }
+
+    // 使用与 submit.ts 相同的导入方式
+    const { queryOne, initDatabase } = await import('../lib/db');
 
     // 初始化数据库
     try {
-      await db.initDatabase();
+      await initDatabase();
     } catch (initErr) {
       console.error('Database init error:', initErr);
     }
 
-    const assessment = await db.queryOne(
+    const assessment = await queryOne(
       `SELECT id, visitor_id, code, responses, scores, ai_status, ai_analysis, ai_generated_at, ai_word_count, created_at
        FROM assessments WHERE id = $1`,
       [id]
