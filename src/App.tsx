@@ -45,7 +45,9 @@ const MainApp: React.FC = () => {
   });
 
   const [hasPaidForTest, setHasPaidForTest] = useState<boolean>(() => {
-    return localStorage.getItem('tangping_paid_test') === 'true';
+    const paid = localStorage.getItem('tangping_paid_test') === 'true';
+    console.log('[App] hasPaidForTest initialized:', paid);
+    return paid;
   });
   const [hasPaidForAI, setHasPaidForAI] = useState<boolean>(() => {
     return localStorage.getItem('tangping_paid_ai') === 'true';
@@ -281,7 +283,10 @@ const MainApp: React.FC = () => {
 
       <main className="flex-grow w-full py-8">
         <div className="max-w-5xl mx-auto px-4">
-          {appState === 'LANDING' && <Landing onStart={() => setAppState('ACTIVE')} />}
+          {appState === 'LANDING' && <Landing onStart={() => {
+            console.log('[App] Starting assessment, hasPaidForTest:', hasPaidForTest);
+            setAppState('ACTIVE');
+          }} />}
           {appState === 'ACTIVE' && (
             <Questionnaire
               responses={responses}

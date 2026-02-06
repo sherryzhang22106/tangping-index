@@ -51,16 +51,26 @@ const Questionnaire: React.FC<Props> = ({
 
   const handleResponse = (qId: number, val: any) => {
     setResponses(prev => ({ ...prev, [qId]: val }));
+    // 选择题自动跳转，但需要检查是否到达付费墙
     if (currentQuestion.type === 'CHOICE') {
       setTimeout(() => handleNext(), 350);
     }
   };
 
   const handleNext = () => {
-    // 检查是否需要付费（基础信息3题 + 正式测评10题 = 第13题，index=12 答完后触发）
-    // 即 currentIndex === BASE_INFO_COUNT + FREE_QUESTIONS_COUNT - 1 = 12
-    const paymentTriggerIndex = BASE_INFO_COUNT + FREE_QUESTIONS_COUNT - 1;
+    // 付费墙触发点：基础信息3题 + 正式测评10题 = 第13题（index=12）答完后
+    // 用户答完第13题（id=13, index=12），要进入第14题时触发付费
+    const paymentTriggerIndex = BASE_INFO_COUNT + FREE_QUESTIONS_COUNT - 1; // = 12
+
+    console.log('[Questionnaire] handleNext called:', {
+      currentIndex,
+      paymentTriggerIndex,
+      hasPaidForTest,
+      shouldShowPayment: currentIndex === paymentTriggerIndex && !hasPaidForTest
+    });
+
     if (currentIndex === paymentTriggerIndex && !hasPaidForTest) {
+      console.log('[Questionnaire] Showing payment modal');
       setShowPaymentModal(true);
       return;
     }
