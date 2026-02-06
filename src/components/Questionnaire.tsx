@@ -15,7 +15,8 @@ interface Props {
   visitorId: string;
 }
 
-const FREE_QUESTIONS_COUNT = 10; // 前10题免费
+const FREE_QUESTIONS_COUNT = 10; // 正式测评题目前10题免费（不含前3题基础信息）
+const BASE_INFO_COUNT = 3; // 前3题是基础信息
 
 const Questionnaire: React.FC<Props> = ({
   responses,
@@ -45,8 +46,10 @@ const Questionnaire: React.FC<Props> = ({
   };
 
   const handleNext = () => {
-    // 检查是否需要付费（第10题答完后，进入第11题前）
-    if (currentIndex === FREE_QUESTIONS_COUNT - 1 && !hasPaidForTest) {
+    // 检查是否需要付费（基础信息3题 + 正式测评10题 = 第13题，index=12 答完后触发）
+    // 即 currentIndex === BASE_INFO_COUNT + FREE_QUESTIONS_COUNT - 1 = 12
+    const paymentTriggerIndex = BASE_INFO_COUNT + FREE_QUESTIONS_COUNT - 1;
+    if (currentIndex === paymentTriggerIndex && !hasPaidForTest) {
       setShowPaymentModal(true);
       return;
     }
@@ -148,7 +151,7 @@ const Questionnaire: React.FC<Props> = ({
             <span className={`text-xs font-bold ${moduleInfo.color}`}>
               {moduleInfo.name}
             </span>
-            {currentIndex < FREE_QUESTIONS_COUNT && !hasPaidForTest && (
+            {currentIndex >= BASE_INFO_COUNT && currentIndex < BASE_INFO_COUNT + FREE_QUESTIONS_COUNT && !hasPaidForTest && (
               <span className="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold">免费体验</span>
             )}
           </div>
