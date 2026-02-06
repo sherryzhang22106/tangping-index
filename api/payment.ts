@@ -190,6 +190,69 @@ async function createJsapiPayment(visitorId: string, openid: string, amount: num
   };
 }
 
+// 创建 H5 支付订单（手机浏览器唤起微信）
+async function createH5Payment(visitorId: string, amount: number, description: string, clientIp: string): Promise<any> {
+  if (!PRIVATE_KEY || !API_KEY) {
+    throw new Error('支付配置未完成');
+  }
+
+  const orderNo = generateOrderNo();
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonceStr = generateNonceStr();
+  const totalFen = Math.round(amount * 100); // 转换为分
+
+  const requestBody = {
+    appid: APPID,
+    mchid: MCHID,
+    description: description || '躺平指数测评',
+    out_trade_no: orderNo,
+    time_expire: new Date(Date.now() + 30 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, '+08:00'),
+    notify_url: NOTIFY_URL,
+    amount: {
+      total: totalFen,
+      currency: 'CNY'
+    },
+    attach: visitorId,
+    scene_info: {
+      payer_client_ip: clientIp || '127.0.0.1',
+      h5_info: {
+        type: 'Wap',
+        wap_url: 'https://lying.bettermee.cn',
+        wap_name: '躺平指数测评'
+      }
+    }
+  };
+
+  const bodyStr = JSON.stringify(requestBody);
+  const urlPath = '/v3/pay/transactions/h5';
+  const signature = generateSignature('POST', urlPath, timestamp, nonceStr, bodyStr);
+  const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${MCHID}",nonce_str="${nonceStr}",signature="${signature}",timestamp="${timestamp}",serial_no="${SERIAL_NO}"`;
+
+  const response = await fetch('https://api.mch.weixin.qq.com/v3/pay/transactions/h5', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': authorization,
+    },
+    body: bodyStr,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    console.error('H5支付创建失败:', result);
+    throw new Error(result.message || '创建支付订单失败');
+  }
+
+  return {
+    orderNo,
+    h5Url: result.h5_url,
+    amount: amount,
+    expireTime: 30 * 60
+  };
+}
+
 // 查询支付状态
 async function queryPayment(orderNo: string): Promise<any> {
   if (!PRIVATE_KEY) {
@@ -282,6 +345,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // 用 code 换取 openid
       const openid = await getOpenId(code);
       const data = await createJsapiPayment(visitorId, openid, amount, description);
+      return res.status(200).json({ success: true, data });
+    }
+
+    // POST /api/payment?action=h5 - 创建 H5 支付（手机浏览器）
+    if (req.method === 'POST' && action === 'h5') {
+      const { visitorId, amount = 1.9, description = '躺平指数测评' } = req.body;
+      if (!visitorId) {
+        return res.status(400).json({ error: '缺少用户标识' });
+      }
+      // 获取客户端IP
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+                       req.headers['x-real-ip'] as string ||
+                       '127.0.0.1';
+      const data = await createH5Payment(visitorId, amount, description, clientIp);
       return res.status(200).json({ success: true, data });
     }
 

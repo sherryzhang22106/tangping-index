@@ -3,12 +3,27 @@ import { useNavigate, Link } from 'react-router-dom';
 import { adminApi } from '../../services/api';
 
 interface Stats {
+  // 测评相关
   totalAssessments: number;
   todayAssessments: number;
   completedAssessments: number;
+  todayCompleted: number;
+  // 兑换码相关
   totalCodes: number;
   unusedCodes: number;
   usedCodes: number;
+  todayUsedCodes: number;
+  // 访问量
+  totalVisits: number;
+  todayVisits: number;
+  // 完成前13题
+  totalPartialComplete: number;
+  todayPartialComplete: number;
+  // 付费统计
+  totalTestPaid: number;
+  todayTestPaid: number;
+  totalAIPaid: number;
+  todayAIPaid: number;
 }
 
 const AdminDashboard: React.FC = () => {
@@ -29,42 +44,23 @@ const AdminDashboard: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [assessmentsRes, codesRes] = await Promise.all([
-        adminApi.listAssessments({ limit: 5 }),
-        adminApi.listCodes({ limit: 100 }),
-      ]);
+      // 获取统计数据
+      const statsRes = await fetch('/api/stats', {
+        headers: adminApi.getAuthHeaders(),
+      });
+      const statsData = await statsRes.json();
 
+      if (statsData.success) {
+        setStats(statsData.data);
+      }
+
+      // 获取最近测评
+      const assessmentsRes = await adminApi.listAssessments({ limit: 5 });
       if (assessmentsRes.success) {
-        // Handle both { data: [...] } and { data: { assessments: [...] } } formats
         const assessments = Array.isArray(assessmentsRes.data)
           ? assessmentsRes.data
           : (assessmentsRes.data?.assessments || []);
         setRecentAssessments(assessments);
-
-        const today = new Date().toDateString();
-        const todayCount = assessments.filter(
-          (a: any) => new Date(a.createdAt).toDateString() === today
-        ).length;
-
-        const completedCount = assessments.filter(
-          (a: any) => a.aiStatus === 'completed'
-        ).length;
-
-        // Handle both { data: [...] } and { data: { codes: [...] } } formats
-        const codes = Array.isArray(codesRes.data)
-          ? codesRes.data
-          : (codesRes.data?.codes || []);
-        const unusedCount = codes.filter((c: any) => c.status === 'UNUSED').length;
-        const usedCount = codes.filter((c: any) => c.status === 'USED').length;
-
-        setStats({
-          totalAssessments: assessmentsRes.data?.total || assessments.length,
-          todayAssessments: todayCount,
-          completedAssessments: completedCount,
-          totalCodes: codes.length,
-          unusedCodes: unusedCount,
-          usedCodes: usedCount,
-        });
       }
     } catch (error) {
       console.error('Load data error:', error);
@@ -128,23 +124,95 @@ const AdminDashboard: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <h2 className="text-2xl font-black text-slate-900 mb-8">数据概览</h2>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-            <div className="text-sm font-bold text-slate-400 mb-2">总测评数</div>
-            <div className="text-4xl font-black text-slate-900">{stats?.totalAssessments || 0}</div>
+        {/* 访问量统计 */}
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-slate-700 mb-4">📊 访问量</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">今日访问</div>
+              <div className="text-3xl font-black text-blue-600">{stats?.todayVisits || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">累计访问</div>
+              <div className="text-3xl font-black text-slate-900">{stats?.totalVisits || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">今日完成13题</div>
+              <div className="text-3xl font-black text-purple-600">{stats?.todayPartialComplete || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">累计完成13题</div>
+              <div className="text-3xl font-black text-slate-900">{stats?.totalPartialComplete || 0}</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-            <div className="text-sm font-bold text-slate-400 mb-2">今日新增</div>
-            <div className="text-4xl font-black text-emerald-600">{stats?.todayAssessments || 0}</div>
+        </div>
+
+        {/* 付费统计 */}
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-slate-700 mb-4">💰 付费统计（含兑换码）</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">今日测评付费</div>
+              <div className="text-3xl font-black text-emerald-600">{stats?.todayTestPaid || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">累计测评付费</div>
+              <div className="text-3xl font-black text-slate-900">{stats?.totalTestPaid || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">今日AI报告付费</div>
+              <div className="text-3xl font-black text-orange-600">{stats?.todayAIPaid || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">累计AI报告付费</div>
+              <div className="text-3xl font-black text-slate-900">{stats?.totalAIPaid || 0}</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-            <div className="text-sm font-bold text-slate-400 mb-2">可用兑换码</div>
-            <div className="text-4xl font-black text-orange-600">{stats?.unusedCodes || 0}</div>
+        </div>
+
+        {/* 兑换码统计 */}
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-slate-700 mb-4">🎫 兑换码</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">可用兑换码</div>
+              <div className="text-3xl font-black text-green-600">{stats?.unusedCodes || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">已使用</div>
+              <div className="text-3xl font-black text-amber-600">{stats?.usedCodes || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">今日使用</div>
+              <div className="text-3xl font-black text-blue-600">{stats?.todayUsedCodes || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">总兑换码</div>
+              <div className="text-3xl font-black text-slate-900">{stats?.totalCodes || 0}</div>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-            <div className="text-sm font-bold text-slate-400 mb-2">已使用兑换码</div>
-            <div className="text-4xl font-black text-amber-600">{stats?.usedCodes || 0}</div>
+        </div>
+
+        {/* 测评统计 */}
+        <div className="mb-8">
+          <h3 className="text-lg font-bold text-slate-700 mb-4">📝 测评数据</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">今日测评</div>
+              <div className="text-3xl font-black text-blue-600">{stats?.todayAssessments || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">累计测评</div>
+              <div className="text-3xl font-black text-slate-900">{stats?.totalAssessments || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">今日AI完成</div>
+              <div className="text-3xl font-black text-emerald-600">{stats?.todayCompleted || 0}</div>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="text-xs font-bold text-slate-400 mb-1">累计AI完成</div>
+              <div className="text-3xl font-black text-slate-900">{stats?.completedAssessments || 0}</div>
+            </div>
           </div>
         </div>
 
@@ -165,24 +233,24 @@ const AdminDashboard: React.FC = () => {
               recentAssessments.map((assessment) => (
                 <div key={assessment.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50">
                   <div>
-                    <div className="font-bold text-slate-900">{assessment.code}</div>
+                    <div className="font-bold text-slate-900">{assessment.code || 'FREE_TEST'}</div>
                     <div className="text-sm text-slate-400">
-                      {new Date(assessment.createdAt).toLocaleString('zh-CN')}
+                      {new Date(assessment.createdAt || assessment.created_at).toLocaleString('zh-CN')}
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      assessment.aiStatus === 'completed'
+                      assessment.aiStatus === 'completed' || assessment.ai_status === 'completed'
                         ? 'bg-emerald-50 text-emerald-600'
-                        : assessment.aiStatus === 'generating'
+                        : assessment.aiStatus === 'generating' || assessment.ai_status === 'generating'
                         ? 'bg-amber-50 text-amber-600'
                         : 'bg-slate-50 text-slate-600'
                     }`}>
-                      {assessment.aiStatus === 'completed' ? '已完成' :
-                       assessment.aiStatus === 'generating' ? '生成中' : '待处理'}
+                      {(assessment.aiStatus || assessment.ai_status) === 'completed' ? '已完成' :
+                       (assessment.aiStatus || assessment.ai_status) === 'generating' ? '生成中' : '待处理'}
                     </span>
                     <span className="text-lg font-black text-orange-600">
-                      {(assessment.scores as any)?.overallIndex || '-'}
+                      {assessment.scores?.totalScore || (assessment.scores as any)?.total_score || '-'}
                     </span>
                   </div>
                 </div>
