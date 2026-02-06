@@ -44,11 +44,17 @@ const MainApp: React.FC = () => {
     return 'LANDING';
   });
 
-  const [hasPaidForTest, setHasPaidForTest] = useState<boolean>(() => {
+  const [hasPaidForTest, setHasPaidForTestInternal] = useState<boolean>(() => {
     const paid = localStorage.getItem('tangping_paid_test') === 'true';
-    console.log('[App] hasPaidForTest initialized:', paid);
+    console.log('[App] hasPaidForTest initialized from localStorage:', paid);
     return paid;
   });
+
+  // 包装 setter 以便追踪谁在修改这个值
+  const setHasPaidForTest = (value: boolean) => {
+    console.log('[App] setHasPaidForTest called with:', value, new Error().stack);
+    setHasPaidForTestInternal(value);
+  };
   const [hasPaidForAI, setHasPaidForAI] = useState<boolean>(() => {
     return localStorage.getItem('tangping_paid_ai') === 'true';
   });
