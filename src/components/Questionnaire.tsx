@@ -28,7 +28,18 @@ const Questionnaire: React.FC<Props> = ({
   onCodeSuccess,
   visitorId
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  // 根据已有的 responses 计算初始 currentIndex
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const answeredCount = Object.keys(responses).length;
+    if (answeredCount > 0) {
+      // 找到最后一个已回答的题目的下一题
+      const maxAnsweredId = Math.max(...Object.keys(responses).map(Number));
+      const nextIndex = QUESTIONS.findIndex(q => q.id === maxAnsweredId) + 1;
+      // 如果已经答完所有题，停在最后一题
+      return Math.min(nextIndex, QUESTIONS.length - 1);
+    }
+    return 0;
+  });
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
