@@ -139,7 +139,6 @@ const ReportView: React.FC = () => {
             hasPaidForAI={reportData.aiStatus === 'completed' || !!reportData.aiAnalysis}
             onMeToo={() => window.location.href = '/'}
           />
-          />
         </div>
       </main>
 
