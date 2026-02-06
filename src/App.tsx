@@ -22,21 +22,42 @@ import ReportView from './pages/ReportView';
 type AppState = 'LANDING' | 'ACTIVE' | 'REPORT';
 
 const MainApp: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>(() => {
-    // 检查URL是否有支付回调参数，如果有则直接进入测评状态
+  // 检查URL参数
+  const getUrlParams = () => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('pay') && urlParams.get('code')) {
+    return {
+      payFlag: urlParams.get('pay'),
+      wxCode: urlParams.get('code'),
+      payType: urlParams.get('type') as 'test' | 'ai' | null,
+    };
+  };
+
+  const [appState, setAppState] = useState<AppState>(() => {
+    const { payFlag, wxCode, payType } = getUrlParams();
+    // 只有测评付费回调才进入测评状态，AI付费回调应该进入报告状态
+    if (payFlag && wxCode && payType === 'test') {
       return 'ACTIVE';
+    }
+    if (payFlag && wxCode && payType === 'ai') {
+      return 'REPORT';
     }
     return 'LANDING';
   });
+
   const [hasPaidForTest, setHasPaidForTest] = useState<boolean>(() => {
     return localStorage.getItem('tangping_paid_test') === 'true';
   });
   const [hasPaidForAI, setHasPaidForAI] = useState<boolean>(() => {
     return localStorage.getItem('tangping_paid_ai') === 'true';
   });
-  const [assessmentId, setAssessmentId] = useState<string | null>(null);
+  const [assessmentId, setAssessmentId] = useState<string | null>(() => {
+    // AI付费回调时恢复 assessmentId
+    const { payFlag, wxCode, payType } = getUrlParams();
+    if (payFlag && wxCode && payType === 'ai') {
+      return localStorage.getItem('tangping_last_assessment_id');
+    }
+    return null;
+  });
   const [userId] = useState<string>(() => {
     const id = localStorage.getItem('growth_barrier_uid');
     if (id) return id;
@@ -46,9 +67,8 @@ const MainApp: React.FC = () => {
   });
 
   const [responses, setResponses] = useState<AssessmentResponse>(() => {
-    // 如果有支付回调，尝试恢复进度
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('pay') && urlParams.get('code')) {
+    const { payFlag, wxCode } = getUrlParams();
+    if (payFlag && wxCode) {
       const savedProgress = localStorage.getItem(`progress_${localStorage.getItem('growth_barrier_uid') || ''}`);
       if (savedProgress) {
         try {
@@ -63,7 +83,23 @@ const MainApp: React.FC = () => {
     }
     return {};
   });
-  const [report, setReport] = useState<ReportData | null>(null);
+
+  const [report, setReport] = useState<ReportData | null>(() => {
+    // AI付费回调时恢复报告数据
+    const { payFlag, wxCode, payType } = getUrlParams();
+    if (payFlag && wxCode && payType === 'ai') {
+      const savedReport = localStorage.getItem('tangping_last_report');
+      if (savedReport) {
+        try {
+          return JSON.parse(savedReport);
+        } catch (e) {
+          console.error('Failed to parse saved report:', e);
+        }
+      }
+    }
+    return null;
+  });
+
   const [loading, setLoading] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [pendingProgress, setPendingProgress] = useState<{responses: AssessmentResponse} | null>(null);
@@ -76,14 +112,10 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     if (paymentHandled) return;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const payFlag = urlParams.get('pay');
-    const wxCode = urlParams.get('code');
-    const payType = urlParams.get('type') as 'test' | 'ai' | null;
+    const { payFlag, wxCode, payType } = getUrlParams();
 
     if (payFlag && wxCode) {
       setPaymentHandled(true);
-      // 设置支付类型并显示支付弹窗
       setPaymentType(payType || 'test');
       setShowPaymentModal(true);
     }
@@ -91,26 +123,23 @@ const MainApp: React.FC = () => {
 
   useEffect(() => {
     const checkProgress = async () => {
-      // 如果URL有支付参数，不显示恢复进度弹窗
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('pay') || urlParams.get('code')) {
+      const { payFlag, wxCode } = getUrlParams();
+      if (payFlag || wxCode) {
         return;
       }
 
-      // 如果已经在测评中或报告页，不显示恢复弹窗
       if (appState !== 'LANDING') {
         return;
       }
 
       const saved = await api.getProgress(userId);
-      // 只有当保存的进度超过3题时才提示恢复
       if (saved && Object.keys(saved.responses).length > 3) {
         setPendingProgress(saved);
         setShowRecovery(true);
       }
     };
     checkProgress();
-  }, [userId]); // 移除 appState 依赖，只在初始化时检查一次
+  }, [userId]);
 
   const handleResume = () => {
     if (pendingProgress) {
@@ -189,11 +218,17 @@ const MainApp: React.FC = () => {
       const submitResult = await api.submitAssessment(userId, 'FREE_TEST', responses, finalScores);
       if (submitResult.success && submitResult.id) {
         setAssessmentId(submitResult.id);
+        // 保存 assessmentId 到 localStorage，以便 AI 付费回调时恢复
+        localStorage.setItem('tangping_last_assessment_id', submitResult.id);
+
         const basicReport = {
           scores: finalScores,
           aiStatus: hasPaidForAI ? 'pending' as const : 'locked' as const
         };
         setReport(basicReport);
+        // 保存报告数据到 localStorage，以便 AI 付费回调时恢复
+        localStorage.setItem('tangping_last_report', JSON.stringify(basicReport));
+
         setAppState('REPORT');
 
         // 如果已付费AI，自动触发AI分析
