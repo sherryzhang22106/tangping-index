@@ -549,37 +549,47 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
               <div className="text-center">
                 <p className="text-[11px] text-white/80 font-bold tracking-wider mb-3">🔬 躺平光谱研究所 · 权威认证</p>
 
-                {/* 标签名称 - 最显眼 */}
-                <h4 className="text-3xl font-black mb-1">{data.scores.level.name}</h4>
+                {/* 躺平指数标题 */}
+                <p className="text-sm text-white/90 mb-1">我的躺平指数</p>
 
-                {/* 等级标签 - 居中 */}
+                {/* 等级标签 - 居中显眼 */}
                 <div className="flex justify-center mb-2">
-                  <span className="text-sm bg-white/30 px-3 py-1 rounded-full font-bold">{data.scores.level.level}</span>
+                  <span className="text-sm bg-white/30 px-4 py-1.5 rounded-full font-black">{data.scores.level.level}</span>
                 </div>
 
-                <p className="text-white/90 text-sm mb-4">"{data.scores.level.description}"</p>
+                {/* 标签名称 - 最显眼 */}
+                <h4 className="text-3xl font-black mb-2">{data.scores.level.name}</h4>
 
-                {/* 躺平指数 */}
-                <div className="bg-white/20 backdrop-blur rounded-xl p-4 mb-3">
+                {/* 总分 */}
+                <div className="bg-white/20 backdrop-blur rounded-xl p-3 mb-3">
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-sm text-white/70">躺平指数</span>
+                    <span className="text-sm text-white/70">总分</span>
                     <span className="text-4xl font-black mx-1">{data.scores.totalScore}</span>
-                    <span className="text-lg opacity-70">/245</span>
+                    <span className="text-lg opacity-70">/245分</span>
                   </div>
-                  {/* 躺赢比例 */}
-                  <p className="text-white/90 text-sm mt-2 font-bold">
-                    🏆 已躺赢 {Math.min(99, Math.round((data.scores.totalScore / 245) * 100))}% 的人
-                  </p>
                 </div>
+
+                {/* 仰卧起坐型标签 */}
+                {data.scores.yangWoQiZuo.type === 'yangwoqizuo' && (
+                  <div className="bg-white/25 rounded-xl p-3 mb-3">
+                    <p className="text-sm font-bold">🔄 我是仰卧起坐型！</p>
+                    <p className="text-xs text-white/80">时卷时躺，好累🔥</p>
+                  </div>
+                )}
+
+                {/* 击败比例 */}
+                <p className="text-white/90 text-sm font-bold mb-3">
+                  🏆 击败了 {Math.min(99, Math.round((data.scores.totalScore / 245) * 100))}% 的打工人
+                </p>
 
                 {/* 亮点数据 */}
                 <div className="grid grid-cols-2 gap-3 text-xs mb-4">
                   <div className="bg-white/15 rounded-xl p-3">
-                    <p className="text-white/60 text-[11px] mb-1">🔥 最躺的方面</p>
+                    <p className="text-white/60 text-[11px] mb-1">🔥 最躺的是</p>
                     <p className="font-bold text-base">{data.scores.analysis.highestDim.nameCn}</p>
                   </div>
                   <div className="bg-white/15 rounded-xl p-3">
-                    <p className="text-white/60 text-[11px] mb-1">💪 还在卷的</p>
+                    <p className="text-white/60 text-[11px] mb-1">💪 最卷的是</p>
                     <p className="font-bold text-base">{data.scores.analysis.lowestDim.nameCn}</p>
                   </div>
                 </div>
@@ -587,7 +597,7 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
                 {/* 底部二维码引导 */}
                 <div className="pt-3 border-t border-white/20 flex items-center justify-between">
                   <div className="text-left">
-                    <p className="text-base font-bold text-white">你是什么躺平段位？</p>
+                    <p className="text-base font-bold text-white">📎 你也来测测？</p>
                     <p className="text-xs text-white/70">扫码测一测 →</p>
                   </div>
                   <img
