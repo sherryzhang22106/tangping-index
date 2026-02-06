@@ -28,6 +28,10 @@ const PaymentModal: React.FC<Props> = ({
   const isWechat = /micromessenger/i.test(navigator.userAgent);
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+  // 调试日志
+  console.log('[PaymentModal] User Agent:', navigator.userAgent);
+  console.log('[PaymentModal] isWechat:', isWechat, 'isMobile:', isMobile);
+
   const title = type === 'test'
     ? '解锁完整测评'
     : '解锁AI深度分析';
@@ -133,23 +137,32 @@ const PaymentModal: React.FC<Props> = ({
     setLoading(true);
     setError('');
 
+    console.log('[Payment] Starting payment...', { isWechat, isMobile, type, price });
+
     try {
       if (isWechat) {
         // 微信内 - 跳转授权获取code
+        console.log('[Payment] WeChat detected, starting OAuth...');
         const currentUrl = window.location.origin + window.location.pathname;
         const redirectUrl = `${currentUrl}?pay=1&type=${type}&amount=${price}`;
+        console.log('[Payment] Redirect URL:', redirectUrl);
+
         const oauthResult = await fetch(`/api/payment?action=oauth&redirect=${encodeURIComponent(redirectUrl)}`);
         const oauthData = await oauthResult.json();
+        console.log('[Payment] OAuth result:', oauthData);
 
         if (oauthData.success && oauthData.data?.url) {
+          console.log('[Payment] Redirecting to OAuth URL:', oauthData.data.url);
           window.location.href = oauthData.data.url;
           return;
         } else {
-          setError('获取授权失败');
+          console.error('[Payment] OAuth failed:', oauthData);
+          setError(oauthData.error || '获取授权失败，请重试');
           setLoading(false);
         }
       } else if (isMobile) {
         // 手机浏览器（非微信）- 使用H5支付，跳转到微信
+        console.log('[Payment] Mobile browser detected, trying H5 payment...');
         const result = await fetch('/api/payment?action=h5', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -157,26 +170,29 @@ const PaymentModal: React.FC<Props> = ({
             visitorId,
             amount: price,
             description: type === 'test' ? '躺平测评解锁' : 'AI深度分析',
-            redirectUrl: window.location.href
           }),
         });
         const data = await result.json();
+        console.log('[Payment] H5 payment result:', data);
 
         if (data.success && data.data?.h5Url) {
           // 跳转到微信H5支付页面
+          console.log('[Payment] Redirecting to H5 URL:', data.data.h5Url);
           window.location.href = data.data.h5Url;
           return;
         } else {
           // 如果H5支付不可用，降级为二维码
-          setError('请使用微信扫码支付');
+          console.log('[Payment] H5 payment failed, falling back to QR code');
+          setError(data.error || '请使用微信扫码支付');
           await generateQRCode();
         }
       } else {
         // PC端 - 生成二维码
+        console.log('[Payment] PC detected, generating QR code...');
         await generateQRCode();
       }
     } catch (err) {
-      console.error('Payment error:', err);
+      console.error('[Payment] Error:', err);
       setError('网络错误，请重试');
       setLoading(false);
     }
