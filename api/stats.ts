@@ -91,8 +91,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         todayAIPaid,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Stats error:', error);
-    return res.status(500).json({ success: false, error: '获取统计数据失败' });
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    return res.status(500).json({
+      success: false,
+      error: '获取统计数据失败',
+      details: error.message,
+      code: error.code
+    });
   }
 }
