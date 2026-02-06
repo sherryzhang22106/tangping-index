@@ -256,12 +256,8 @@ const Landing: React.FC<Props> = ({ onStart }) => {
             </div>
           </div>
 
-          {/* Lv.2 奋斗挣扎型 - 仰卧起坐核心亮点 */}
+          {/* Lv.2 仰卧起坐型 */}
           <div className="bg-gradient-to-br from-lime-50 to-yellow-50 rounded-2xl p-5 border-2 border-lime-300 hover:shadow-lg hover:shadow-lime-100 transition-all group relative overflow-hidden">
-            {/* 火焰标签 */}
-            <div className="absolute top-2 right-2 px-2 py-1 bg-orange-500 text-white text-[10px] font-black rounded-full animate-pulse">
-              🔥 核心亮点
-            </div>
             <div className="flex items-start gap-4">
               {/* 动态人偶 - 仰卧起坐 */}
               <div className="shrink-0 w-20 h-20 bg-lime-100 rounded-xl flex items-center justify-center overflow-hidden">
@@ -270,7 +266,7 @@ const Landing: React.FC<Props> = ({ onStart }) => {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 bg-lime-200 text-lime-700 rounded text-xs font-black">Lv.2</span>
-                  <span className="font-black text-slate-800 group-hover:text-lime-600 transition-colors">奋斗挣扎型</span>
+                  <span className="font-black text-slate-800 group-hover:text-lime-600 transition-colors">仰卧起坐型</span>
                 </div>
                 <span className="text-xs text-slate-400">71-105分</span>
                 <p className="text-sm text-slate-600 mt-2"><span className="font-bold text-lime-600">时卷时躺</span></p>
