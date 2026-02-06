@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import prisma from '../lib/prisma';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 function sanitizeCode(code: string): string {
   return code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');

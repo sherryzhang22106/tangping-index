@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import prisma from '../lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+
+const prisma = new PrismaClient();
 
 // 生成唯一ID
 function generateId(): string {
