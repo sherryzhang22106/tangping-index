@@ -22,7 +22,14 @@ import ReportView from './pages/ReportView';
 type AppState = 'LANDING' | 'ACTIVE' | 'REPORT';
 
 const MainApp: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>('LANDING');
+  const [appState, setAppState] = useState<AppState>(() => {
+    // 检查URL是否有支付回调参数，如果有则直接进入测评状态
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('pay') && urlParams.get('code')) {
+      return 'ACTIVE';
+    }
+    return 'LANDING';
+  });
   const [hasPaidForTest, setHasPaidForTest] = useState<boolean>(() => {
     return localStorage.getItem('tangping_paid_test') === 'true';
   });
@@ -38,42 +45,49 @@ const MainApp: React.FC = () => {
     return newId;
   });
 
-  const [responses, setResponses] = useState<AssessmentResponse>({});
+  const [responses, setResponses] = useState<AssessmentResponse>(() => {
+    // 如果有支付回调，尝试恢复进度
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('pay') && urlParams.get('code')) {
+      const savedProgress = localStorage.getItem(`progress_${localStorage.getItem('growth_barrier_uid') || ''}`);
+      if (savedProgress) {
+        try {
+          const parsed = JSON.parse(savedProgress);
+          if (parsed.responses) {
+            return parsed.responses;
+          }
+        } catch (e) {
+          console.error('Failed to parse saved progress:', e);
+        }
+      }
+    }
+    return {};
+  });
   const [report, setReport] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [pendingProgress, setPendingProgress] = useState<{responses: AssessmentResponse} | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentType, setPaymentType] = useState<'test' | 'ai'>('test');
+  const [paymentHandled, setPaymentHandled] = useState(false);
   const { toasts, toast, removeToast } = useToast();
 
   // 处理微信支付回调
   useEffect(() => {
+    if (paymentHandled) return;
+
     const urlParams = new URLSearchParams(window.location.search);
     const payFlag = urlParams.get('pay');
     const wxCode = urlParams.get('code');
     const payType = urlParams.get('type') as 'test' | 'ai' | null;
 
     if (payFlag && wxCode) {
-      // 微信支付授权回调，恢复进度并显示支付弹窗
-      const savedProgress = localStorage.getItem(`progress_${userId}`);
-      if (savedProgress) {
-        try {
-          const parsed = JSON.parse(savedProgress);
-          if (parsed.responses && Object.keys(parsed.responses).length > 0) {
-            setResponses(parsed.responses);
-            setAppState('ACTIVE');
-          }
-        } catch (e) {
-          console.error('Failed to parse saved progress:', e);
-        }
-      }
-
+      setPaymentHandled(true);
       // 设置支付类型并显示支付弹窗
       setPaymentType(payType || 'test');
       setShowPaymentModal(true);
     }
-  }, [userId]);
+  }, [paymentHandled]);
 
   useEffect(() => {
     const checkProgress = async () => {
@@ -83,16 +97,20 @@ const MainApp: React.FC = () => {
         return;
       }
 
+      // 如果已经在测评中或报告页，不显示恢复弹窗
+      if (appState !== 'LANDING') {
+        return;
+      }
+
       const saved = await api.getProgress(userId);
-      if (saved && Object.keys(saved.responses).length > 0) {
-        if (appState === 'LANDING') {
-          setPendingProgress(saved);
-          setShowRecovery(true);
-        }
+      // 只有当保存的进度超过3题时才提示恢复
+      if (saved && Object.keys(saved.responses).length > 3) {
+        setPendingProgress(saved);
+        setShowRecovery(true);
       }
     };
     checkProgress();
-  }, [userId, appState]);
+  }, [userId]); // 移除 appState 依赖，只在初始化时检查一次
 
   const handleResume = () => {
     if (pendingProgress) {

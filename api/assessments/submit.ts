@@ -1,14 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
-import { query, initDatabase } from '../lib/db';
 
 // 生成唯一ID
 function generateId(): string {
   return crypto.randomBytes(16).toString('hex');
 }
-
-// 确保数据库表存在
-let dbInitialized = false;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -25,12 +21,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 初始化数据库（只执行一次）
-    if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
-    }
-
     const { visitorId, code, responses, scores } = req.body;
 
     if (!visitorId || !responses || !scores) {
@@ -40,21 +30,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 生成评测ID
     const assessmentId = generateId();
 
-    // 保存到数据库
-    await query(
-      `INSERT INTO assessments (id, visitor_id, code, responses, scores, ai_status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-      [
-        assessmentId,
-        visitorId,
-        code || 'FREE_TEST',
-        JSON.stringify(responses),
-        JSON.stringify(scores),
-        'pending'
-      ]
-    );
+    // 尝试保存到数据库（如果配置了）
+    if (process.env.DATABASE_URL) {
+      try {
+        const { query, initDatabase } = await import('../lib/db');
+        await initDatabase();
+        await query(
+          `INSERT INTO assessments (id, visitor_id, code, responses, scores, ai_status, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [
+            assessmentId,
+            visitorId,
+            code || 'FREE_TEST',
+            JSON.stringify(responses),
+            JSON.stringify(scores),
+            'pending'
+          ]
+        );
+        console.log('Assessment saved to database:', { id: assessmentId, visitorId });
+      } catch (dbError) {
+        console.error('Database save failed, continuing without persistence:', dbError);
+        // 数据库失败不影响返回结果
+      }
+    } else {
+      console.log('DATABASE_URL not configured, skipping database save');
+    }
 
-    console.log('Assessment saved to database:', {
+    console.log('Assessment submitted:', {
       id: assessmentId,
       visitorId,
       code,
