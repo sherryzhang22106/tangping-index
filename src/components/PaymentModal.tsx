@@ -161,31 +161,10 @@ const PaymentModal: React.FC<Props> = ({
           setLoading(false);
         }
       } else if (isMobile) {
-        // 手机浏览器（非微信）- 使用H5支付，跳转到微信
-        console.log('[Payment] Mobile browser detected, trying H5 payment...');
-        const result = await fetch('/api/payment?action=h5', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            visitorId,
-            amount: price,
-            description: type === 'test' ? '躺平测评解锁' : 'AI深度分析',
-          }),
-        });
-        const data = await result.json();
-        console.log('[Payment] H5 payment result:', data);
-
-        if (data.success && data.data?.h5Url) {
-          // 跳转到微信H5支付页面
-          console.log('[Payment] Redirecting to H5 URL:', data.data.h5Url);
-          window.location.href = data.data.h5Url;
-          return;
-        } else {
-          // 如果H5支付不可用，降级为二维码
-          console.log('[Payment] H5 payment failed, falling back to QR code');
-          setError(data.error || '请使用微信扫码支付');
-          await generateQRCode();
-        }
+        // 手机浏览器（非微信）- 直接显示二维码，提示用微信扫码
+        // 注：H5支付需要在微信商户平台配置域名，暂时使用二维码方式
+        console.log('[Payment] Mobile browser detected, showing QR code...');
+        await generateQRCode();
       } else {
         // PC端 - 生成二维码
         console.log('[Payment] PC detected, generating QR code...');
