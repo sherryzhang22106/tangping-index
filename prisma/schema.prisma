@@ -53,3 +53,23 @@ model Progress {
 
   @@map("progress")
 }
+
+// 访问记录表 - 记录页面访问
+model Visit {
+  id        String   @id @default(uuid())
+  visitorId String   @map("visitor_id")
+  page      String   @default("home")  // home, report, admin 等
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("visits")
+}
+
+// 参与记录表 - 记录用户开始答题（选择过至少1题）
+model Participation {
+  id        String   @id @default(uuid())
+  visitorId String   @unique @map("visitor_id")  // 每个用户只记录一次
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("participations")
+}

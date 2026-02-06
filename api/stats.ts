@@ -36,8 +36,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       todayTestPaid,
       totalAIPaid,
       todayAIPaid,
+      // 真正的访问量统计
+      totalVisits,
+      todayVisits,
+      // 参与测评数（选择过至少1题）
+      totalParticipations,
+      todayParticipations,
     ] = await Promise.all([
-      // 总测评数
+      // 总测评数（完成全部题目并提交的）
       prisma.assessment.count(),
       // 今日测评数
       prisma.assessment.count({ where: { createdAt: { gte: today } } }),
@@ -59,16 +65,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // AI报告付费用户（有ai_analysis的）
       prisma.assessment.count({ where: { aiAnalysis: { not: null } } }),
       prisma.assessment.count({ where: { aiAnalysis: { not: null }, createdAt: { gte: today } } }),
+      // 真正的访问量（页面加载次数）
+      prisma.visit.count().catch(() => 0),
+      prisma.visit.count({ where: { createdAt: { gte: today } } }).catch(() => 0),
+      // 参与测评数（选择过至少1题的用户数）
+      prisma.participation.count().catch(() => 0),
+      prisma.participation.count({ where: { createdAt: { gte: today } } }).catch(() => 0),
     ]);
-
-    // 访问量用测评数估算
-    const totalVisits = totalAssessments;
-    const todayVisits = todayAssessments;
 
     return res.status(200).json({
       success: true,
       data: {
-        // 测评相关
+        // 测评相关（完成全部题目）
         totalAssessments,
         todayAssessments,
         completedAssessments,
@@ -78,12 +86,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         unusedCodes,
         usedCodes,
         todayUsedCodes,
-        // 访问量
+        // 真正的访问量（页面加载次数）
         totalVisits,
         todayVisits,
-        // 完成前13题（用总测评数代替）
-        totalPartialComplete: totalAssessments,
-        todayPartialComplete: todayAssessments,
+        // 参与测评数（选择过至少1题）
+        totalParticipations,
+        todayParticipations,
         // 付费统计
         totalTestPaid,
         todayTestPaid,

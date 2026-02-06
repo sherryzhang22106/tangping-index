@@ -185,6 +185,36 @@ export const api = {
       error: result.message || result.error,
     };
   },
+
+  /**
+   * 记录页面访问
+   */
+  trackVisit: async (visitorId: string, page: string = 'home'): Promise<void> => {
+    try {
+      await fetch(`${API_BASE}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'visit', visitorId, page }),
+      });
+    } catch (e) {
+      // 静默失败，不影响用户体验
+    }
+  },
+
+  /**
+   * 记录参与测评（选择过至少1题）
+   */
+  trackParticipation: async (visitorId: string): Promise<void> => {
+    try {
+      await fetch(`${API_BASE}/track`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'participate', visitorId }),
+      });
+    } catch (e) {
+      // 静默失败，不影响用户体验
+    }
+  },
 };
 
 // Admin API functions

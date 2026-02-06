@@ -147,6 +147,9 @@ const MainApp: React.FC = () => {
       }
     };
     checkProgress();
+
+    // 记录页面访问
+    api.trackVisit(userId, 'home');
   }, [userId]);
 
   const handleResume = () => {
@@ -300,6 +303,10 @@ const MainApp: React.FC = () => {
                 setResponses(prev => {
                   const next = typeof updater === 'function' ? updater(prev) : updater;
                   api.saveProgress(userId, 0, next);
+                  // 当用户第一次选择题目时，记录参与
+                  if (Object.keys(prev).length === 0 && Object.keys(next).length > 0) {
+                    api.trackParticipation(userId);
+                  }
                   return next;
                 });
               }}

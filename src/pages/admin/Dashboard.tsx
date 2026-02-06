@@ -13,12 +13,12 @@ interface Stats {
   unusedCodes: number;
   usedCodes: number;
   todayUsedCodes: number;
-  // 访问量
+  // 真正的访问量
   totalVisits: number;
   todayVisits: number;
-  // 完成前13题
-  totalPartialComplete: number;
-  todayPartialComplete: number;
+  // 参与测评数（选择过至少1题）
+  totalParticipations: number;
+  todayParticipations: number;
   // 付费统计
   totalTestPaid: number;
   todayTestPaid: number;
@@ -137,12 +137,12 @@ const AdminDashboard: React.FC = () => {
               <div className="text-3xl font-black text-slate-900">{stats?.totalVisits || 0}</div>
             </div>
             <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-              <div className="text-xs font-bold text-slate-400 mb-1">今日完成13题</div>
-              <div className="text-3xl font-black text-purple-600">{stats?.todayPartialComplete || 0}</div>
+              <div className="text-xs font-bold text-slate-400 mb-1">今日参与测评</div>
+              <div className="text-3xl font-black text-purple-600">{stats?.todayParticipations || 0}</div>
             </div>
             <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-              <div className="text-xs font-bold text-slate-400 mb-1">累计完成13题</div>
-              <div className="text-3xl font-black text-slate-900">{stats?.totalPartialComplete || 0}</div>
+              <div className="text-xs font-bold text-slate-400 mb-1">累计参与测评</div>
+              <div className="text-3xl font-black text-slate-900">{stats?.totalParticipations || 0}</div>
             </div>
           </div>
         </div>
