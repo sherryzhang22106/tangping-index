@@ -146,7 +146,8 @@ export const api = {
    * Get assessment by ID
    */
   getAssessment: async (id: string): Promise<any | null> => {
-    const result = await fetchApi(`/assessments/${id}`);
+    // 使用新的 get 端点，避免动态路由问题
+    const result = await fetchApi(`/assessments/get?id=${id}`);
     return result.success ? result.data : null;
   },
 

@@ -543,11 +543,11 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
 
                 <p className="text-xs text-slate-400 text-center mb-4">保存后打开微信 → 朋友圈 → 发布</p>
 
-                {/* 推荐文案 - 折叠显示 */}
-                <details className="mb-2">
-                  <summary className="text-xs text-amber-600 font-bold cursor-pointer">📝 点击复制推荐文案</summary>
+                {/* 推荐文案 */}
+                <div className="mb-2 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                  <p className="text-xs text-amber-600 font-bold mb-2">📝 推荐文案（点击复制）</p>
                   <p
-                    className="text-sm text-amber-800 cursor-pointer hover:bg-amber-100 p-2 rounded-lg transition-colors mt-2 bg-amber-50"
+                    className="text-sm text-amber-800 cursor-pointer hover:bg-amber-100 p-2 rounded-lg transition-colors"
                     onClick={() => {
                       const text = `测了一下躺平指数，我居然是「${data.scores.level.name}」😂 ${data.scores.level.description}，你们呢？`;
                       navigator.clipboard.writeText(text);
@@ -556,7 +556,7 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
                   >
                     测了一下躺平指数，我居然是「{data.scores.level.name}」😂 {data.scores.level.description}，你们呢？
                   </p>
-                </details>
+                </div>
               </>
             )}
 
