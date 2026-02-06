@@ -8,6 +8,7 @@ import CodeActivation from './components/CodeActivation';
 import Questionnaire from './components/Questionnaire';
 import Report from './components/Report';
 import ProgressModal from './components/ProgressModal';
+import PaymentModal from './components/PaymentModal';
 import { ToastContainer, useToast } from './components/Toast';
 import { formatUserDataForAI } from './services/aiAnalysis';
 
@@ -42,7 +43,37 @@ const MainApp: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [pendingProgress, setPendingProgress] = useState<{responses: AssessmentResponse} | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentType, setPaymentType] = useState<'test' | 'ai'>('test');
   const { toasts, toast, removeToast } = useToast();
+
+  // 处理微信支付回调
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const payFlag = urlParams.get('pay');
+    const wxCode = urlParams.get('code');
+    const payType = urlParams.get('type') as 'test' | 'ai' | null;
+
+    if (payFlag && wxCode) {
+      // 微信支付授权回调，恢复进度并显示支付弹窗
+      const savedProgress = localStorage.getItem(`progress_${userId}`);
+      if (savedProgress) {
+        try {
+          const parsed = JSON.parse(savedProgress);
+          if (parsed.responses && Object.keys(parsed.responses).length > 0) {
+            setResponses(parsed.responses);
+            setAppState('ACTIVE');
+          }
+        } catch (e) {
+          console.error('Failed to parse saved progress:', e);
+        }
+      }
+
+      // 设置支付类型并显示支付弹窗
+      setPaymentType(payType || 'test');
+      setShowPaymentModal(true);
+    }
+  }, [userId]);
 
   useEffect(() => {
     const checkProgress = async () => {
@@ -245,6 +276,31 @@ const MainApp: React.FC = () => {
       </footer>
 
       {showRecovery && <ProgressModal onConfirm={handleResume} onCancel={handleStartFresh} />}
+
+      {/* 微信支付回调后的支付弹窗 */}
+      {showPaymentModal && (
+        <PaymentModal
+          type={paymentType}
+          price={paymentType === 'test' ? 1.9 : 1}
+          visitorId={userId}
+          onPaymentSuccess={() => {
+            setShowPaymentModal(false);
+            if (paymentType === 'test') {
+              handleTestPaymentSuccess();
+            } else {
+              handleAIPaymentSuccess();
+            }
+            // 清除URL参数
+            window.history.replaceState({}, '', window.location.pathname);
+          }}
+          onCodeSuccess={paymentType === 'test' ? handleTestCodeSuccess : undefined}
+          onClose={() => {
+            setShowPaymentModal(false);
+            // 清除URL参数
+            window.history.replaceState({}, '', window.location.pathname);
+          }}
+        />
+      )}
     </div>
   );
 };
