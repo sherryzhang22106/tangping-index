@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import prisma from '../../shared/db';
 import crypto from 'crypto';
 
 // 生成唯一ID
@@ -29,37 +30,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 生成评测ID
     const assessmentId = generateId();
+    const useCode = code || 'FREE_TEST';
 
-    // 尝试保存到数据库（如果配置了）
-    if (process.env.DATABASE_URL) {
+    // 确保 FREE_TEST code 存在（如果使用的是 FREE_TEST）
+    if (useCode === 'FREE_TEST') {
       try {
-        const { query, initDatabase } = await import('../lib/db');
-        await initDatabase();
-        await query(
-          `INSERT INTO assessments (id, visitor_id, code, responses, scores, ai_status, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-          [
-            assessmentId,
-            visitorId,
-            code || 'FREE_TEST',
-            JSON.stringify(responses),
-            JSON.stringify(scores),
-            'pending'
-          ]
-        );
-        console.log('Assessment saved to database:', { id: assessmentId, visitorId });
-      } catch (dbError) {
-        console.error('Database save failed, continuing without persistence:', dbError);
-        // 数据库失败不影响返回结果
+        await prisma.redemptionCode.upsert({
+          where: { code: 'FREE_TEST' },
+          update: {},
+          create: {
+            code: 'FREE_TEST',
+            packageType: 'FREE',
+            status: 'SYSTEM',
+          },
+        });
+      } catch (e) {
+        console.log('FREE_TEST code already exists or created');
       }
-    } else {
-      console.log('DATABASE_URL not configured, skipping database save');
     }
+
+    // 保存到数据库
+    const assessment = await prisma.assessment.create({
+      data: {
+        id: assessmentId,
+        visitorId,
+        code: useCode,
+        responses,
+        scores,
+        aiStatus: 'pending',
+      },
+    });
+
+    console.log('Assessment saved to database:', { id: assessment.id, visitorId });
 
     console.log('Assessment submitted:', {
       id: assessmentId,
       visitorId,
-      code,
+      code: useCode,
       totalScore: scores.totalScore,
       level: scores.level?.name
     });

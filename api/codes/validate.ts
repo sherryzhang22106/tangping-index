@@ -1,14 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import prisma from '../../shared/db';
 
 function sanitizeCode(code: string): string {
   return code.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
-}
-
-// 验证兑换码格式
-function isValidCodeFormat(code: string): boolean {
-  const validPrefixes = ['TP-', 'LYING-', 'TEST-', 'VIP-'];
-  const hasValidPrefix = validPrefixes.some(prefix => code.startsWith(prefix));
-  return hasValidPrefix && code.length >= 6;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -38,17 +32,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ success: false, message: '兑换码格式无效' });
     }
 
-    // 验证兑换码格式
-    if (!isValidCodeFormat(sanitizedCode)) {
+    // 从数据库查找兑换码
+    const codeRecord = await prisma.redemptionCode.findUnique({
+      where: { code: sanitizedCode },
+    });
+
+    if (!codeRecord) {
       return res.status(400).json({ success: false, message: '无效的兑换码' });
     }
 
-    // 格式正确的兑换码直接通过
+    // 检查状态
+    if (codeRecord.status === 'USED') {
+      return res.status(400).json({ success: false, message: '该兑换码已被使用' });
+    }
+
+    if (codeRecord.status === 'REVOKED') {
+      return res.status(400).json({ success: false, message: '该兑换码已被撤销' });
+    }
+
+    // 检查过期
+    if (codeRecord.expiresAt && new Date(codeRecord.expiresAt) < new Date()) {
+      return res.status(400).json({ success: false, message: '该兑换码已过期' });
+    }
+
+    // 激活兑换码
+    await prisma.redemptionCode.update({
+      where: { code: sanitizedCode },
+      data: {
+        status: 'USED',
+        activatedAt: new Date(),
+        userId: visitorId || null,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       data: {
         code: sanitizedCode,
-        packageType: 'STANDARD',
+        packageType: codeRecord.packageType,
         status: 'ACTIVATED',
       },
     });

@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import prisma from '../../shared/db';
 
 function verifyToken(token: string): boolean {
   try {
@@ -35,18 +36,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 由于没有持久化存储，返回空列表
-    // 提示：生成的兑换码请导出Excel保存，任何以 TP-/LYING-/TEST-/VIP- 开头的码都有效
+    const { page = '1', limit = '20', status } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {};
+    if (status && status !== 'all') {
+      where.status = status;
+    }
+
+    const [codes, total] = await Promise.all([
+      prisma.redemptionCode.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+      prisma.redemptionCode.count({ where }),
+    ]);
+
     return res.status(200).json({
       success: true,
-      data: [],
+      data: codes,
       pagination: {
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 0,
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
       },
-      message: '提示：生成的兑换码请导出Excel保存。任何以 TP-/LYING-/TEST-/VIP- 开头的码都可使用。',
     });
   } catch (error) {
     console.error('List codes error:', error);

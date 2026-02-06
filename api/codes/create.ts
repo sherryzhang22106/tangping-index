@@ -1,12 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-interface CodeRecord {
-  code: string;
-  packageType: string;
-  status: 'UNUSED' | 'ACTIVATED' | 'USED' | 'REVOKED';
-  createdAt: string;
-  expiresAt?: string;
-}
+import prisma from '../../shared/db';
 
 function generateCode(prefix: string): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -57,15 +50,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 限制数量
     const actualCount = Math.min(Math.max(1, count), 100);
 
-    // 生成兑换码
+    // 生成兑换码并保存到数据库
     const codes: string[] = [];
     const now = new Date();
     const expiresAt = expiresInDays
-      ? new Date(now.getTime() + expiresInDays * 24 * 60 * 60 * 1000).toISOString()
+      ? new Date(now.getTime() + expiresInDays * 24 * 60 * 60 * 1000)
       : null;
 
     for (let i = 0; i < actualCount; i++) {
       const code = generateCode(prefix + '-');
+
+      // 保存到数据库
+      await prisma.redemptionCode.create({
+        data: {
+          code,
+          packageType,
+          status: 'UNUSED',
+          expiresAt,
+        },
+      });
+
       codes.push(code);
     }
 
@@ -75,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         codes,
         count: codes.length,
         packageType,
-        expiresAt,
+        expiresAt: expiresAt?.toISOString() || null,
         createdAt: now.toISOString(),
       },
     });

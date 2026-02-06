@@ -1,23 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import prisma from '../../shared/db';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1/chat/completions';
-
-// 数据库相关 - 可选
-let dbModule: any = null;
-let dbInitialized = false;
-
-async function getDb() {
-  if (!dbModule) {
-    try {
-      dbModule = await import('../lib/db');
-    } catch (e) {
-      console.log('Database module not available');
-      return null;
-    }
-  }
-  return dbModule;
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -49,18 +34,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!userData) {
       return res.status(400).json({ success: false, error: '缺少必要参数' });
-    }
-
-    // 初始化数据库（可选，失败不影响AI分析）
-    const db = await getDb();
-    if (db && !dbInitialized) {
-      try {
-        await db.initDatabase();
-        dbInitialized = true;
-        console.log('Database initialized');
-      } catch (dbErr) {
-        console.error('Database init error (non-fatal):', dbErr);
-      }
     }
 
     console.log('Building AI prompt...');
@@ -114,15 +87,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('AI analysis completed successfully, word count:', aiWordCount);
 
-    // 保存到数据库（可选）
-    if (assessmentId && db && dbInitialized) {
+    // 保存到数据库
+    if (assessmentId) {
       try {
-        await db.query(
-          `UPDATE assessments
-           SET ai_status = $1, ai_analysis = $2, ai_generated_at = $3, ai_word_count = $4, updated_at = NOW()
-           WHERE id = $5`,
-          ['completed', aiContent, aiGeneratedAt, aiWordCount, assessmentId]
-        );
+        await prisma.assessment.update({
+          where: { id: assessmentId },
+          data: {
+            aiStatus: 'completed',
+            aiAnalysis: aiContent,
+          },
+        });
         console.log('AI analysis saved to database');
       } catch (dbErr) {
         console.error('Failed to save AI analysis to database:', dbErr);
