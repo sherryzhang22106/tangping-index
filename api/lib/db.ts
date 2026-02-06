@@ -1,19 +1,37 @@
-import { Pool } from 'pg';
+import { Pool, PoolConfig } from 'pg';
 
-// 创建连接池
-const pool = new Pool({
+// Serverless 环境优化的连接池配置
+const poolConfig: PoolConfig = {
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  max: 10,
-  idleTimeoutMillis: 30000,
+  ssl: process.env.DATABASE_URL?.includes('sslmode=require')
+    ? { rejectUnauthorized: false }
+    : false,
+  max: 1, // Serverless 环境使用单连接
+  idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 10000,
-});
+};
+
+let pool: Pool | null = null;
+
+function getPool(): Pool {
+  if (!pool) {
+    pool = new Pool(poolConfig);
+    pool.on('error', (err) => {
+      console.error('Unexpected pool error:', err);
+      pool = null;
+    });
+  }
+  return pool;
+}
+
+// 数据库初始化标记
+let dbInitialized = false;
 
 // 初始化数据库表
 export async function initDatabase() {
-  const client = await pool.connect();
+  if (dbInitialized) return;
+
+  const client = await getPool().connect();
   try {
     // 创建 assessments 表
     await client.query(`
@@ -57,7 +75,11 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_codes_status ON codes(status)
     `);
 
+    dbInitialized = true;
     console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Database initialization error:', error);
+    throw error;
   } finally {
     client.release();
   }
@@ -67,7 +89,7 @@ export async function initDatabase() {
 export async function query(text: string, params?: any[]) {
   const start = Date.now();
   try {
-    const result = await pool.query(text, params);
+    const result = await getPool().query(text, params);
     const duration = Date.now() - start;
     console.log('Executed query', { text: text.substring(0, 50), duration, rows: result.rowCount });
     return result;
@@ -89,4 +111,4 @@ export async function queryMany(text: string, params?: any[]) {
   return result.rows;
 }
 
-export default pool;
+export default { query, queryOne, queryMany, initDatabase };
