@@ -8,11 +8,9 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/!(lib)/**/*.ts": {
-      "runtime": "@vercel/node@3.2.0"
-    },
-    "api/*.ts": {
-      "runtime": "@vercel/node@3.2.0"
+    "api/**/*.ts": {
+      "runtime": "@vercel/node@3.2.0",
+      "includeFiles": "prisma/schema.prisma"
     }
   },
   "headers": [
