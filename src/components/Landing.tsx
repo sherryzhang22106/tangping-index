@@ -5,9 +5,200 @@ interface Props {
   onStart: () => void;
 }
 
+// 动态躺平人偶组件
+const LyingFigure: React.FC<{ level: number }> = ({ level }) => {
+  // Lv.1: 站着刷手机，一脸认真
+  if (level === 1) {
+    return (
+      <div className="relative w-16 h-20 flex items-end justify-center">
+        {/* 人物 - 站立 */}
+        <div className="relative animate-bounce-subtle">
+          {/* 头 */}
+          <div className="w-6 h-6 bg-emerald-400 rounded-full absolute -top-7 left-1/2 -translate-x-1/2 flex items-center justify-center">
+            <span className="text-[8px]">😤</span>
+          </div>
+          {/* 身体 */}
+          <div className="w-4 h-8 bg-emerald-300 rounded-t-lg mx-auto"></div>
+          {/* 手机 */}
+          <div className="absolute top-2 -right-3 w-2 h-3 bg-slate-700 rounded-sm animate-pulse"></div>
+          {/* 腿 */}
+          <div className="flex gap-1 justify-center">
+            <div className="w-1.5 h-4 bg-emerald-400 rounded-b"></div>
+            <div className="w-1.5 h-4 bg-emerald-400 rounded-b"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Lv.2: 仰卧起坐动图 - 核心亮点！
+  if (level === 2) {
+    return (
+      <div className="relative w-20 h-16 flex items-center justify-center overflow-hidden">
+        <div className="animate-situp origin-bottom">
+          {/* 头 */}
+          <div className="w-5 h-5 bg-lime-400 rounded-full flex items-center justify-center mb-0.5">
+            <span className="text-[8px] animate-expression">😫</span>
+          </div>
+          {/* 上半身 */}
+          <div className="w-4 h-6 bg-lime-300 rounded-t-lg origin-bottom"></div>
+        </div>
+        {/* 下半身固定 */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+          <div className="w-8 h-2 bg-lime-400 rounded-full"></div>
+        </div>
+        {/* 汗水 */}
+        <div className="absolute top-1 right-2 text-[10px] animate-ping">💦</div>
+      </div>
+    );
+  }
+
+  // Lv.3: 坐着瘫，半睡半醒
+  if (level === 3) {
+    return (
+      <div className="relative w-16 h-16 flex items-end justify-center">
+        {/* 沙发 */}
+        <div className="absolute bottom-0 w-14 h-4 bg-yellow-200 rounded-t-lg"></div>
+        {/* 人物 - 瘫坐 */}
+        <div className="relative bottom-3 animate-sway">
+          {/* 头 - 歪着 */}
+          <div className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center rotate-12">
+            <span className="text-[8px]">😪</span>
+          </div>
+          {/* 身体 - 弯曲 */}
+          <div className="w-4 h-5 bg-yellow-300 rounded-lg -mt-1 rotate-6"></div>
+        </div>
+        {/* Zzz */}
+        <div className="absolute top-0 right-1 text-[10px] animate-float">💤</div>
+      </div>
+    );
+  }
+
+  // Lv.4: 侧躺刷手机，偶尔翻身
+  if (level === 4) {
+    return (
+      <div className="relative w-20 h-14 flex items-center justify-center">
+        {/* 床 */}
+        <div className="absolute bottom-0 w-18 h-2 bg-orange-100 rounded-full"></div>
+        {/* 人物 - 侧躺 */}
+        <div className="relative animate-roll">
+          {/* 头 */}
+          <div className="w-5 h-5 bg-orange-400 rounded-full flex items-center justify-center absolute left-0 top-0">
+            <span className="text-[8px]">😑</span>
+          </div>
+          {/* 身体 - 横躺 */}
+          <div className="w-8 h-4 bg-orange-300 rounded-full ml-4 mt-1"></div>
+          {/* 手机 */}
+          <div className="absolute left-6 -top-2 w-2 h-3 bg-slate-600 rounded-sm animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Lv.5: 平躺，手机掉在脸上
+  if (level === 5) {
+    return (
+      <div className="relative w-20 h-12 flex items-center justify-center">
+        {/* 床 */}
+        <div className="absolute bottom-0 w-18 h-2 bg-red-100 rounded-full"></div>
+        {/* 人物 - 平躺 */}
+        <div className="relative">
+          {/* 身体 - 完全平躺 */}
+          <div className="w-12 h-3 bg-red-300 rounded-full"></div>
+          {/* 头 */}
+          <div className="w-4 h-4 bg-red-400 rounded-full flex items-center justify-center absolute -left-3 top-0">
+            <span className="text-[8px]">😵</span>
+          </div>
+          {/* 手机掉在脸上 */}
+          <div className="absolute -left-2 -top-1 w-3 h-2 bg-slate-700 rounded-sm animate-phone-drop"></div>
+        </div>
+        {/* 星星 */}
+        <div className="absolute top-0 left-2 text-[8px] animate-spin-slow">⭐</div>
+      </div>
+    );
+  }
+
+  // Lv.6: 摊成一滩水，和沙发融为一体
+  if (level === 6) {
+    return (
+      <div className="relative w-20 h-14 flex items-end justify-center">
+        {/* 沙发 */}
+        <div className="absolute bottom-0 w-16 h-5 bg-purple-200 rounded-t-2xl"></div>
+        {/* 人物 - 融化状态 */}
+        <div className="relative bottom-1 animate-melt">
+          {/* 融化的身体 */}
+          <div className="w-14 h-3 bg-purple-300/80 rounded-full blur-[1px]"></div>
+          {/* 头 - 也在融化 */}
+          <div className="w-5 h-4 bg-purple-400/80 rounded-full flex items-center justify-center absolute -left-1 -top-2 blur-[0.5px]">
+            <span className="text-[8px]">🫠</span>
+          </div>
+        </div>
+        {/* 灵魂出窍 */}
+        <div className="absolute -top-1 right-2 text-[10px] animate-float-up">👻</div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const Landing: React.FC<Props> = ({ onStart }) => {
   return (
     <div className="space-y-24 pb-20 animate-in fade-in duration-700">
+      {/* 自定义动画样式 */}
+      <style>{`
+        @keyframes situp {
+          0%, 100% { transform: rotate(0deg); }
+          50% { transform: rotate(-70deg); }
+        }
+        @keyframes sway {
+          0%, 100% { transform: rotate(-5deg); }
+          50% { transform: rotate(5deg); }
+        }
+        @keyframes roll {
+          0%, 100% { transform: scaleX(1); }
+          50% { transform: scaleX(-1); }
+        }
+        @keyframes phone-drop {
+          0%, 70%, 100% { transform: translateY(0) rotate(0deg); }
+          80% { transform: translateY(-3px) rotate(-10deg); }
+          90% { transform: translateY(2px) rotate(5deg); }
+        }
+        @keyframes melt {
+          0%, 100% { transform: scaleY(1) scaleX(1); }
+          50% { transform: scaleY(0.8) scaleX(1.1); }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0); opacity: 1; }
+          50% { transform: translateY(-5px); opacity: 0.7; }
+        }
+        @keyframes float-up {
+          0%, 100% { transform: translateY(0); opacity: 0.8; }
+          50% { transform: translateY(-8px); opacity: 1; }
+        }
+        @keyframes bounce-subtle {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes expression {
+          0%, 40%, 100% { content: '😫'; }
+          50%, 90% { content: '😤'; }
+        }
+        .animate-situp { animation: situp 1.5s ease-in-out infinite; }
+        .animate-sway { animation: sway 3s ease-in-out infinite; }
+        .animate-roll { animation: roll 4s ease-in-out infinite; }
+        .animate-phone-drop { animation: phone-drop 3s ease-in-out infinite; }
+        .animate-melt { animation: melt 4s ease-in-out infinite; }
+        .animate-float { animation: float 2s ease-in-out infinite; }
+        .animate-float-up { animation: float-up 3s ease-in-out infinite; }
+        .animate-bounce-subtle { animation: bounce-subtle 1s ease-in-out infinite; }
+        .animate-spin-slow { animation: spin-slow 4s linear infinite; }
+      `}</style>
+
       {/* 1. Hero */}
       <section className="relative pt-12 text-center space-y-8 animate-in slide-in-from-top-10 duration-1000">
         <div className="inline-block px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-[10px] font-black uppercase tracking-[0.3em] mb-4">
@@ -44,102 +235,120 @@ const Landing: React.FC<Props> = ({ onStart }) => {
           </p>
         </div>
 
-        {/* 躺平等级卡片 */}
+        {/* 躺平等级卡片 - 带动态人偶 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Lv.1 卷王本王 */}
           <div className="bg-white rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-50 transition-all group">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">💪</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
+            <div className="flex items-start gap-4">
+              {/* 动态人偶 */}
+              <div className="shrink-0 w-20 h-20 bg-emerald-50 rounded-xl flex items-center justify-center overflow-hidden">
+                <LyingFigure level={1} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-xs font-black">Lv.1</span>
                   <span className="font-black text-slate-800 group-hover:text-emerald-600 transition-colors">卷王本王</span>
                 </div>
                 <span className="text-xs text-slate-400">35-70分</span>
+                <p className="text-sm text-slate-600 mt-2"><span className="font-bold text-emerald-600">全力以赴</span></p>
+                <p className="text-xs text-slate-400 leading-relaxed mt-1">还在相信"努力就有回报"的稀有物种</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mb-2"><span className="font-bold text-emerald-600">全力以赴</span></p>
-            <p className="text-xs text-slate-400 leading-relaxed">还在相信"努力就有回报"的稀有物种</p>
           </div>
 
-          {/* Lv.2 奋斗挣扎型 */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-100 hover:border-lime-200 hover:shadow-lg hover:shadow-lime-50 transition-all group">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">📈</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-lime-100 text-lime-700 rounded text-xs font-black">Lv.2</span>
+          {/* Lv.2 奋斗挣扎型 - 仰卧起坐核心亮点 */}
+          <div className="bg-gradient-to-br from-lime-50 to-yellow-50 rounded-2xl p-5 border-2 border-lime-300 hover:shadow-lg hover:shadow-lime-100 transition-all group relative overflow-hidden">
+            {/* 火焰标签 */}
+            <div className="absolute top-2 right-2 px-2 py-1 bg-orange-500 text-white text-[10px] font-black rounded-full animate-pulse">
+              🔥 核心亮点
+            </div>
+            <div className="flex items-start gap-4">
+              {/* 动态人偶 - 仰卧起坐 */}
+              <div className="shrink-0 w-20 h-20 bg-lime-100 rounded-xl flex items-center justify-center overflow-hidden">
+                <LyingFigure level={2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 bg-lime-200 text-lime-700 rounded text-xs font-black">Lv.2</span>
                   <span className="font-black text-slate-800 group-hover:text-lime-600 transition-colors">奋斗挣扎型</span>
                 </div>
                 <span className="text-xs text-slate-400">71-105分</span>
+                <p className="text-sm text-slate-600 mt-2"><span className="font-bold text-lime-600">时卷时躺</span></p>
+                <p className="text-xs text-slate-400 leading-relaxed mt-1">在努力和放弃之间反复横跳</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mb-2"><span className="font-bold text-lime-600">时卷时躺</span></p>
-            <p className="text-xs text-slate-400 leading-relaxed">在努力和放弃之间反复横跳</p>
           </div>
 
           {/* Lv.3 佛系青年 */}
           <div className="bg-white rounded-2xl p-5 border border-slate-100 hover:border-yellow-200 hover:shadow-lg hover:shadow-yellow-50 transition-all group">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">🧘</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 w-20 h-20 bg-yellow-50 rounded-xl flex items-center justify-center overflow-hidden">
+                <LyingFigure level={3} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-black">Lv.3</span>
                   <span className="font-black text-slate-800 group-hover:text-yellow-600 transition-colors">佛系青年</span>
                 </div>
                 <span className="text-xs text-slate-400">106-140分</span>
+                <p className="text-sm text-slate-600 mt-2"><span className="font-bold text-yellow-600">顺其自然</span></p>
+                <p className="text-xs text-slate-400 leading-relaxed mt-1">"都行、可以、没事"三连本尊</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mb-2"><span className="font-bold text-yellow-600">顺其自然</span></p>
-            <p className="text-xs text-slate-400 leading-relaxed">"都行、可以、没事"三连本尊</p>
           </div>
 
           {/* Lv.4 躺平预备役 */}
           <div className="bg-white rounded-2xl p-5 border border-slate-100 hover:border-orange-200 hover:shadow-lg hover:shadow-orange-50 transition-all group">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">😑</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 w-20 h-20 bg-orange-50 rounded-xl flex items-center justify-center overflow-hidden">
+                <LyingFigure level={4} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs font-black">Lv.4</span>
                   <span className="font-black text-slate-800 group-hover:text-orange-600 transition-colors">躺平预备役</span>
                 </div>
                 <span className="text-xs text-slate-400">141-175分</span>
+                <p className="text-sm text-slate-600 mt-2"><span className="font-bold text-orange-600">被动抵抗</span></p>
+                <p className="text-xs text-slate-400 leading-relaxed mt-1">"下辈子当猫吧"挂嘴边</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mb-2"><span className="font-bold text-orange-600">被动抵抗</span></p>
-            <p className="text-xs text-slate-400 leading-relaxed">"下辈子当猫吧"挂嘴边</p>
           </div>
 
           {/* Lv.5 资深躺平家 */}
           <div className="bg-white rounded-2xl p-5 border border-slate-100 hover:border-red-200 hover:shadow-lg hover:shadow-red-50 transition-all group">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">🛌</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 w-20 h-20 bg-red-50 rounded-xl flex items-center justify-center overflow-hidden">
+                <LyingFigure level={5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-black">Lv.5</span>
                   <span className="font-black text-slate-800 group-hover:text-red-600 transition-colors">资深躺平家</span>
                 </div>
                 <span className="text-xs text-slate-400">176-210分</span>
+                <p className="text-sm text-slate-600 mt-2"><span className="font-bold text-red-600">精神退休</span></p>
+                <p className="text-xs text-slate-400 leading-relaxed mt-1">已在精神上退休，肉身还在苦苦支撑</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mb-2"><span className="font-bold text-red-600">精神退休</span></p>
-            <p className="text-xs text-slate-400 leading-relaxed">已在精神上退休，肉身还在苦苦支撑</p>
           </div>
 
           {/* Lv.6 躺平祖师爷 */}
           <div className="bg-white rounded-2xl p-5 border border-slate-100 hover:border-purple-200 hover:shadow-lg hover:shadow-purple-50 transition-all group">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">🏖️</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
+            <div className="flex items-start gap-4">
+              <div className="shrink-0 w-20 h-20 bg-purple-50 rounded-xl flex items-center justify-center overflow-hidden">
+                <LyingFigure level={6} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-black">Lv.6</span>
                   <span className="font-black text-slate-800 group-hover:text-purple-600 transition-colors">躺平祖师爷</span>
                 </div>
                 <span className="text-xs text-slate-400">211-245分</span>
+                <p className="text-sm text-slate-600 mt-2"><span className="font-bold text-purple-600">彻底觉醒</span></p>
+                <p className="text-xs text-slate-400 leading-relaxed mt-1">人生赢家（指赢麻了的麻）</p>
               </div>
             </div>
-            <p className="text-sm text-slate-600 mb-2"><span className="font-bold text-purple-600">彻底觉醒</span></p>
-            <p className="text-xs text-slate-400 leading-relaxed">人生赢家（指赢麻了的麻）</p>
           </div>
         </div>
 
