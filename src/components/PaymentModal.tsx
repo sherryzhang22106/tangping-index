@@ -45,10 +45,14 @@ const PaymentModal: React.FC<Props> = ({
       const urlParams = new URLSearchParams(window.location.search);
       const wxCode = urlParams.get('code');
       const payFlag = urlParams.get('pay');
+      const urlAmount = urlParams.get('amount');
+      const urlType = urlParams.get('type');
 
       if (wxCode && payFlag) {
         // 有授权code，自动发起支付
-        handleWechatPayment(wxCode);
+        const payAmount = urlAmount ? parseFloat(urlAmount) : price;
+        const payDesc = urlType === 'ai' ? 'AI深度分析' : '躺平测评解锁';
+        handleWechatPayment(wxCode, payAmount, payDesc);
         // 清除URL参数
         window.history.replaceState({}, '', window.location.pathname);
       }
@@ -56,7 +60,7 @@ const PaymentModal: React.FC<Props> = ({
   }, []);
 
   // 微信JSAPI支付
-  const handleWechatPayment = async (wxCode: string) => {
+  const handleWechatPayment = async (wxCode: string, payAmount: number, payDesc: string) => {
     setLoading(true);
     setError('');
 
@@ -64,7 +68,12 @@ const PaymentModal: React.FC<Props> = ({
       const result = await fetch('/api/payment?action=jsapi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visitorId, code: wxCode }),
+        body: JSON.stringify({
+          visitorId,
+          code: wxCode,
+          amount: payAmount,
+          description: payDesc
+        }),
       });
       const data = await result.json();
 
@@ -127,7 +136,7 @@ const PaymentModal: React.FC<Props> = ({
       if (isWechat) {
         // 微信内 - 跳转授权获取code
         const currentUrl = window.location.origin + window.location.pathname;
-        const redirectUrl = `${currentUrl}?pay=1&type=${type}`;
+        const redirectUrl = `${currentUrl}?pay=1&type=${type}&amount=${price}`;
         const oauthResult = await fetch(`/api/payment?action=oauth&redirect=${encodeURIComponent(redirectUrl)}`);
         const oauthData = await oauthResult.json();
 
@@ -143,7 +152,11 @@ const PaymentModal: React.FC<Props> = ({
         const result = await fetch('/api/payment?action=create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ visitorId }),
+          body: JSON.stringify({
+            visitorId,
+            amount: price,
+            description: type === 'test' ? '躺平测评解锁' : 'AI深度分析'
+          }),
         });
         const data = await result.json();
 

@@ -30,9 +30,16 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
 
   useEffect(() => {
     if (data.aiStatus === 'generating') {
+      // 更快的进度增长，模拟真实的AI生成过程
       const interval = setInterval(() => {
-        setLoadingProgress(prev => (prev >= 99 ? 99 : prev + 0.3));
-      }, 1000);
+        setLoadingProgress(prev => {
+          // 快速增长到80%，然后慢下来
+          if (prev < 60) return prev + 3;
+          if (prev < 80) return prev + 1.5;
+          if (prev < 95) return prev + 0.5;
+          return prev;
+        });
+      }, 300);
       return () => clearInterval(interval);
     } else if (data.aiStatus === 'completed' && data.aiAnalysis) {
       setLoadingProgress(100);

@@ -63,7 +63,7 @@ async function getOpenId(code: string): Promise<string> {
 }
 
 // 创建 Native 支付订单（PC扫码）
-async function createNativePayment(visitorId: string): Promise<any> {
+async function createNativePayment(visitorId: string, amount: number, description: string): Promise<any> {
   if (!PRIVATE_KEY || !API_KEY) {
     throw new Error('支付配置未完成');
   }
@@ -71,16 +71,17 @@ async function createNativePayment(visitorId: string): Promise<any> {
   const orderNo = generateOrderNo();
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const nonceStr = generateNonceStr();
+  const totalFen = Math.round(amount * 100); // 转换为分
 
   const requestBody = {
     appid: APPID,
     mchid: MCHID,
-    description: '躺平指数测评',
+    description: description || '躺平指数测评',
     out_trade_no: orderNo,
     time_expire: new Date(Date.now() + 30 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, '+08:00'),
     notify_url: NOTIFY_URL,
     amount: {
-      total: 10,
+      total: totalFen,
       currency: 'CNY'
     },
     attach: visitorId
@@ -111,13 +112,13 @@ async function createNativePayment(visitorId: string): Promise<any> {
   return {
     orderNo,
     codeUrl: result.code_url,
-    amount: 0.1,
+    amount: amount,
     expireTime: 30 * 60
   };
 }
 
 // 创建 JSAPI 支付订单（微信内支付）
-async function createJsapiPayment(visitorId: string, openid: string): Promise<any> {
+async function createJsapiPayment(visitorId: string, openid: string, amount: number, description: string): Promise<any> {
   if (!PRIVATE_KEY || !API_KEY) {
     throw new Error('支付配置未完成');
   }
@@ -125,16 +126,17 @@ async function createJsapiPayment(visitorId: string, openid: string): Promise<an
   const orderNo = generateOrderNo();
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const nonceStr = generateNonceStr();
+  const totalFen = Math.round(amount * 100); // 转换为分
 
   const requestBody = {
     appid: APPID,
     mchid: MCHID,
-    description: '躺平指数测评',
+    description: description || '躺平指数测评',
     out_trade_no: orderNo,
     time_expire: new Date(Date.now() + 30 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, '+08:00'),
     notify_url: NOTIFY_URL,
     amount: {
-      total: 10,
+      total: totalFen,
       currency: 'CNY'
     },
     attach: visitorId,
@@ -184,7 +186,7 @@ async function createJsapiPayment(visitorId: string, openid: string): Promise<an
     package: packageStr,
     signType: 'RSA',
     paySign: paySignature,
-    amount: 0.1
+    amount: amount
   };
 }
 
@@ -262,24 +264,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // POST /api/payment?action=create - 创建 Native 支付（PC扫码）
     if (req.method === 'POST' && action === 'create') {
-      const { visitorId } = req.body;
+      const { visitorId, amount = 1.9, description = '躺平指数测评' } = req.body;
       if (!visitorId) {
         return res.status(400).json({ error: '缺少用户标识' });
       }
-      const data = await createNativePayment(visitorId);
+      const data = await createNativePayment(visitorId, amount, description);
       return res.status(200).json({ success: true, data });
     }
 
     // POST /api/payment?action=jsapi - 创建 JSAPI 支付（微信内）
     if (req.method === 'POST' && action === 'jsapi') {
-      const { visitorId, code } = req.body;
+      const { visitorId, code, amount = 1.9, description = '躺平指数测评' } = req.body;
       if (!visitorId || !code) {
         return res.status(400).json({ error: '缺少必要参数' });
       }
 
       // 用 code 换取 openid
       const openid = await getOpenId(code);
-      const data = await createJsapiPayment(visitorId, openid);
+      const data = await createJsapiPayment(visitorId, openid, amount, description);
       return res.status(200).json({ success: true, data });
     }
 
