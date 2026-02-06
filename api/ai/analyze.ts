@@ -1,7 +1,10 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { query, initDatabase } from '../lib/db';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+
+// 确保数据库表存在
+let dbInitialized = false;
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1/chat/completions';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -24,6 +27,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // 初始化数据库（只执行一次）
+    if (!dbInitialized) {
+      await initDatabase();
+      dbInitialized = true;
+    }
+
     const { assessmentId, userData } = req.body;
 
     if (!userData) {
@@ -80,13 +89,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = await response.json();
     const aiContent = data.choices?.[0]?.message?.content || '';
+    const aiGeneratedAt = new Date().toISOString();
+    const aiWordCount = aiContent.length;
+
+    // 保存 AI 分析结果到数据库
+    if (assessmentId) {
+      await query(
+        `UPDATE assessments
+         SET ai_status = $1, ai_analysis = $2, ai_generated_at = $3, ai_word_count = $4, updated_at = NOW()
+         WHERE id = $5`,
+        ['completed', aiContent, aiGeneratedAt, aiWordCount, assessmentId]
+      );
+      console.log('AI analysis saved to database:', { assessmentId, wordCount: aiWordCount });
+    }
 
     return res.status(200).json({
       success: true,
       aiAnalysis: aiContent,
       aiStatus: 'completed',
-      aiGeneratedAt: new Date().toISOString(),
-      aiWordCount: aiContent.length,
+      aiGeneratedAt,
+      aiWordCount,
     });
   } catch (error) {
     console.error('AI analysis error:', error);

@@ -1,10 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
+import { query, initDatabase } from '../lib/db';
 
 // 生成唯一ID
 function generateId(): string {
   return crypto.randomBytes(16).toString('hex');
 }
+
+// 确保数据库表存在
+let dbInitialized = false;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -21,6 +25,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // 初始化数据库（只执行一次）
+    if (!dbInitialized) {
+      await initDatabase();
+      dbInitialized = true;
+    }
+
     const { visitorId, code, responses, scores } = req.body;
 
     if (!visitorId || !responses || !scores) {
@@ -30,12 +40,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 生成评测ID
     const assessmentId = generateId();
 
-    // 注意：由于 Vercel Hobby 计划限制，这里不使用数据库
-    // 评测数据通过 AI 分析 API 处理
-    // 支付用户（code 以 PAID_ 开头）直接通过
-    // 兑换码用户在前端已验证
+    // 保存到数据库
+    await query(
+      `INSERT INTO assessments (id, visitor_id, code, responses, scores, ai_status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [
+        assessmentId,
+        visitorId,
+        code || 'FREE_TEST',
+        JSON.stringify(responses),
+        JSON.stringify(scores),
+        'pending'
+      ]
+    );
 
-    console.log('Assessment submitted:', {
+    console.log('Assessment saved to database:', {
       id: assessmentId,
       visitorId,
       code,
