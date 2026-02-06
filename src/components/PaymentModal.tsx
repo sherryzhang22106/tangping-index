@@ -26,6 +26,7 @@ const PaymentModal: React.FC<Props> = ({
   const [checkingPayment, setCheckingPayment] = useState(false);
 
   const isWechat = /micromessenger/i.test(navigator.userAgent);
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
   const title = type === 'test'
     ? '解锁完整测评'
@@ -147,33 +148,61 @@ const PaymentModal: React.FC<Props> = ({
           setError('获取授权失败');
           setLoading(false);
         }
-      } else {
-        // PC端 - 生成二维码
-        const result = await fetch('/api/payment?action=create', {
+      } else if (isMobile) {
+        // 手机浏览器（非微信）- 使用H5支付，跳转到微信
+        const result = await fetch('/api/payment?action=h5', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             visitorId,
             amount: price,
-            description: type === 'test' ? '躺平测评解锁' : 'AI深度分析'
+            description: type === 'test' ? '躺平测评解锁' : 'AI深度分析',
+            redirectUrl: window.location.href
           }),
         });
         const data = await result.json();
 
-        if (data.success && data.data?.codeUrl) {
-          // 使用第三方API生成二维码图片
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.data.codeUrl)}`;
-          setQrCodeUrl(qrUrl);
-          setOrderNo(data.data.orderNo);
-          setLoading(false);
+        if (data.success && data.data?.h5Url) {
+          // 跳转到微信H5支付页面
+          window.location.href = data.data.h5Url;
+          return;
         } else {
-          setError(data.error || '创建支付失败');
-          setLoading(false);
+          // 如果H5支付不可用，降级为二维码
+          setError('请使用微信扫码支付');
+          await generateQRCode();
         }
+      } else {
+        // PC端 - 生成二维码
+        await generateQRCode();
       }
     } catch (err) {
       console.error('Payment error:', err);
       setError('网络错误，请重试');
+      setLoading(false);
+    }
+  };
+
+  // 生成支付二维码
+  const generateQRCode = async () => {
+    const result = await fetch('/api/payment?action=create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        visitorId,
+        amount: price,
+        description: type === 'test' ? '躺平测评解锁' : 'AI深度分析'
+      }),
+    });
+    const data = await result.json();
+
+    if (data.success && data.data?.codeUrl) {
+      // 使用第三方API生成二维码图片
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.data.codeUrl)}`;
+      setQrCodeUrl(qrUrl);
+      setOrderNo(data.data.orderNo);
+      setLoading(false);
+    } else {
+      setError(data.error || '创建支付失败');
       setLoading(false);
     }
   };

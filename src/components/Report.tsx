@@ -547,64 +547,52 @@ const Report: React.FC<Props> = ({ data, assessmentId, hasPaidForAI, onAIPayment
             {/* 分享卡片 - 用于生成图片，始终隐藏 */}
             <div ref={shareCardRef} className="bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 rounded-2xl p-6 text-white shadow-xl" style={{ position: 'absolute', left: '-9999px', top: 0, width: '320px' }}>
               <div className="text-center">
-                <p className="text-[11px] text-white/80 font-bold tracking-wider mb-3">🔬 躺平光谱研究所 · 权威认证</p>
+                <p className="text-[11px] text-white/80 font-bold tracking-wider mb-4">🔬 躺平光谱研究所 · 权威认证</p>
 
-                {/* 躺平指数标题 */}
-                <p className="text-sm text-white/90 mb-1">我的躺平指数</p>
-
-                {/* 等级标签 - 居中显眼 */}
-                <div className="flex justify-center mb-2">
-                  <span className="text-sm bg-white/30 px-4 py-1.5 rounded-full font-black">{data.scores.level.level}</span>
+                {/* 躺在床上的小人图标 */}
+                <div className="flex justify-center mb-3">
+                  <div className="text-4xl">🛌</div>
                 </div>
 
-                {/* 标签名称 - 最显眼 */}
-                <h4 className="text-3xl font-black mb-2">{data.scores.level.name}</h4>
+                {/* 我是XXX - 最显眼 */}
+                <h4 className="text-2xl font-black mb-2">我是「{data.scores.level.name}」</h4>
+                <p className="text-sm text-white/80 mb-4">"{data.scores.level.description}"</p>
 
-                {/* 总分 */}
-                <div className="bg-white/20 backdrop-blur rounded-xl p-3 mb-3">
+                {/* 躺平指数 */}
+                <div className="bg-white/20 backdrop-blur rounded-xl p-4 mb-4">
+                  <p className="text-xs text-white/70 mb-1">躺平指数</p>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-sm text-white/70">总分</span>
-                    <span className="text-4xl font-black mx-1">{data.scores.totalScore}</span>
-                    <span className="text-lg opacity-70">/245分</span>
+                    <span className="text-5xl font-black">{data.scores.totalScore}</span>
+                    <span className="text-lg opacity-70">/245</span>
                   </div>
+                  <p className="text-xs text-white/60 mt-1">躺得不错，继续保持</p>
                 </div>
 
-                {/* 仰卧起坐型标签 */}
-                {data.scores.yangWoQiZuo.type === 'yangwoqizuo' && (
-                  <div className="bg-white/25 rounded-xl p-3 mb-3">
-                    <p className="text-sm font-bold">🔄 我是仰卧起坐型！</p>
-                    <p className="text-xs text-white/80">时卷时躺，好累🔥</p>
-                  </div>
-                )}
-
-                {/* 击败比例 */}
-                <p className="text-white/90 text-sm font-bold mb-3">
-                  🏆 击败了 {Math.min(99, Math.round((data.scores.totalScore / 245) * 100))}% 的打工人
-                </p>
-
-                {/* 亮点数据 */}
+                {/* 亮点数据 - 两列 */}
                 <div className="grid grid-cols-2 gap-3 text-xs mb-4">
                   <div className="bg-white/15 rounded-xl p-3">
-                    <p className="text-white/60 text-[11px] mb-1">🔥 最躺的是</p>
-                    <p className="font-bold text-base">{data.scores.analysis.highestDim.nameCn}</p>
+                    <p className="text-white/60 text-[10px] mb-1">最躺的方面</p>
+                    <p className="font-bold text-sm">{data.scores.analysis.highestDim.nameCn}</p>
+                    <p className="text-white/70 text-[10px]">{data.scores.analysis.highestDim.score.toFixed(0)}% 已躺平</p>
                   </div>
                   <div className="bg-white/15 rounded-xl p-3">
-                    <p className="text-white/60 text-[11px] mb-1">💪 最卷的是</p>
-                    <p className="font-bold text-base">{data.scores.analysis.lowestDim.nameCn}</p>
+                    <p className="text-white/60 text-[10px] mb-1">还在卷的方面</p>
+                    <p className="font-bold text-sm">{data.scores.analysis.lowestDim.nameCn}</p>
+                    <p className="text-white/70 text-[10px]">卷不动了也得卷</p>
                   </div>
                 </div>
 
-                {/* 底部二维码引导 */}
-                <div className="pt-3 border-t border-white/20 flex items-center justify-between">
-                  <div className="text-left">
-                    <p className="text-base font-bold text-white">📎 你也来测测？</p>
-                    <p className="text-xs text-white/70">扫码测一测 →</p>
+                {/* 底部引导 - 二维码 */}
+                <div className="pt-4 border-t border-white/20">
+                  <p className="text-base font-bold mb-2">你是什么躺平段位？</p>
+                  <p className="text-xs text-white/70 mb-3">41道灵魂拷问，测出你的真实状态</p>
+                  <div className="flex justify-center">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent('https://lying.bettermee.cn')}&bgcolor=ffffff&color=000000`}
+                      alt="扫码测试"
+                      className="w-20 h-20 rounded-lg bg-white p-1"
+                    />
                   </div>
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('https://lying.bettermee.cn')}&bgcolor=ffffff&color=000000`}
-                    alt="扫码测试"
-                    className="w-16 h-16 rounded-lg bg-white p-1"
-                  />
                 </div>
               </div>
             </div>

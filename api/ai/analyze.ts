@@ -23,21 +23,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!DEEPSEEK_API_KEY) {
     console.error('DEEPSEEK_API_KEY not configured');
-    return res.status(500).json({ error: 'AI服务未配置' });
+    return res.status(500).json({ success: false, error: 'AI服务未配置，请联系管理员' });
   }
 
   try {
     // 初始化数据库（只执行一次）
     if (!dbInitialized) {
-      await initDatabase();
-      dbInitialized = true;
+      try {
+        await initDatabase();
+        dbInitialized = true;
+      } catch (dbErr) {
+        console.error('Database init error (non-fatal):', dbErr);
+        // 数据库初始化失败不影响AI分析
+      }
     }
 
     const { assessmentId, userData } = req.body;
 
     if (!userData) {
-      return res.status(400).json({ error: '缺少必要参数' });
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
     }
+
+    console.log('Starting AI analysis for assessment:', assessmentId);
+    console.log('User data received:', JSON.stringify(userData).substring(0, 500));
 
     const prompt = buildAIPrompt(userData);
 
@@ -65,25 +73,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('DeepSeek API error:', errorData);
-      throw new Error('AI API 调用失败');
+      const errorText = await response.text();
+      console.error('DeepSeek API error:', response.status, errorText);
+      return res.status(500).json({ success: false, error: `AI服务暂时不可用 (${response.status})，请稍后重试` });
     }
 
     const data = await response.json();
     const aiContent = data.choices?.[0]?.message?.content || '';
+
+    if (!aiContent) {
+      console.error('DeepSeek returned empty content:', data);
+      return res.status(500).json({ success: false, error: 'AI生成内容为空，请重试' });
+    }
+
     const aiGeneratedAt = new Date().toISOString();
     const aiWordCount = aiContent.length;
 
+    console.log('AI analysis completed, word count:', aiWordCount);
+
     // 保存 AI 分析结果到数据库
-    if (assessmentId) {
-      await query(
-        `UPDATE assessments
-         SET ai_status = $1, ai_analysis = $2, ai_generated_at = $3, ai_word_count = $4, updated_at = NOW()
-         WHERE id = $5`,
-        ['completed', aiContent, aiGeneratedAt, aiWordCount, assessmentId]
-      );
-      console.log('AI analysis saved to database:', { assessmentId, wordCount: aiWordCount });
+    if (assessmentId && dbInitialized) {
+      try {
+        await query(
+          `UPDATE assessments
+           SET ai_status = $1, ai_analysis = $2, ai_generated_at = $3, ai_word_count = $4, updated_at = NOW()
+           WHERE id = $5`,
+          ['completed', aiContent, aiGeneratedAt, aiWordCount, assessmentId]
+        );
+        console.log('AI analysis saved to database:', { assessmentId, wordCount: aiWordCount });
+      } catch (dbErr) {
+        console.error('Failed to save AI analysis to database:', dbErr);
+        // 数据库保存失败不影响返回结果
+      }
     }
 
     return res.status(200).json({
@@ -95,7 +116,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     console.error('AI analysis error:', error);
-    return res.status(500).json({ error: 'AI分析失败' });
+    const errorMessage = error instanceof Error ? error.message : '未知错误';
+    return res.status(500).json({ success: false, error: `AI分析失败: ${errorMessage}` });
   }
 }
 
