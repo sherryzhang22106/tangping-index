@@ -10,7 +10,7 @@
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:frontend\"",
     "dev:frontend": "vite",
     "dev:api": "node dev-server.js",
-    "build": "vite build",
+    "build": "prisma generate && vite build",
     "preview": "vite preview",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
