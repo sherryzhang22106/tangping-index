@@ -1,11 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { query, initDatabase } from '../lib/db';
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
-
-// 确保数据库表存在
-let dbInitialized = false;
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+// 数据库相关 - 可选
+let dbModule: any = null;
+let dbInitialized = false;
+
+async function getDb() {
+  if (!dbModule) {
+    try {
+      dbModule = await import('../lib/db');
+    } catch (e) {
+      console.log('Database module not available');
+      return null;
+    }
+  }
+  return dbModule;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -18,8 +30,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: '方法不允许' });
+    return res.status(405).json({ success: false, error: '方法不允许' });
   }
+
+  console.log('=== AI Analysis Request ===');
+  console.log('DEEPSEEK_API_KEY exists:', !!DEEPSEEK_API_KEY);
 
   if (!DEEPSEEK_API_KEY) {
     console.error('DEEPSEEK_API_KEY not configured');
@@ -27,28 +42,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // 初始化数据库（只执行一次）
-    if (!dbInitialized) {
-      try {
-        await initDatabase();
-        dbInitialized = true;
-      } catch (dbErr) {
-        console.error('Database init error (non-fatal):', dbErr);
-        // 数据库初始化失败不影响AI分析
-      }
-    }
-
     const { assessmentId, userData } = req.body;
+
+    console.log('Assessment ID:', assessmentId);
+    console.log('User data keys:', userData ? Object.keys(userData) : 'null');
 
     if (!userData) {
       return res.status(400).json({ success: false, error: '缺少必要参数' });
     }
 
-    console.log('Starting AI analysis for assessment:', assessmentId);
-    console.log('User data received:', JSON.stringify(userData).substring(0, 500));
+    // 初始化数据库（可选，失败不影响AI分析）
+    const db = await getDb();
+    if (db && !dbInitialized) {
+      try {
+        await db.initDatabase();
+        dbInitialized = true;
+        console.log('Database initialized');
+      } catch (dbErr) {
+        console.error('Database init error (non-fatal):', dbErr);
+      }
+    }
 
+    console.log('Building AI prompt...');
     const prompt = buildAIPrompt(userData);
+    console.log('Prompt length:', prompt.length);
 
+    console.log('Calling DeepSeek API...');
     const response = await fetch(DEEPSEEK_BASE_URL, {
       method: 'POST',
       headers: {
@@ -72,6 +91,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }),
     });
 
+    console.log('DeepSeek response status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error('DeepSeek API error:', response.status, errorText);
@@ -81,29 +102,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data = await response.json();
     const aiContent = data.choices?.[0]?.message?.content || '';
 
+    console.log('AI content length:', aiContent.length);
+
     if (!aiContent) {
-      console.error('DeepSeek returned empty content:', data);
+      console.error('DeepSeek returned empty content:', JSON.stringify(data).substring(0, 500));
       return res.status(500).json({ success: false, error: 'AI生成内容为空，请重试' });
     }
 
     const aiGeneratedAt = new Date().toISOString();
     const aiWordCount = aiContent.length;
 
-    console.log('AI analysis completed, word count:', aiWordCount);
+    console.log('AI analysis completed successfully, word count:', aiWordCount);
 
-    // 保存 AI 分析结果到数据库
-    if (assessmentId && dbInitialized) {
+    // 保存到数据库（可选）
+    if (assessmentId && db && dbInitialized) {
       try {
-        await query(
+        await db.query(
           `UPDATE assessments
            SET ai_status = $1, ai_analysis = $2, ai_generated_at = $3, ai_word_count = $4, updated_at = NOW()
            WHERE id = $5`,
           ['completed', aiContent, aiGeneratedAt, aiWordCount, assessmentId]
         );
-        console.log('AI analysis saved to database:', { assessmentId, wordCount: aiWordCount });
+        console.log('AI analysis saved to database');
       } catch (dbErr) {
         console.error('Failed to save AI analysis to database:', dbErr);
-        // 数据库保存失败不影响返回结果
       }
     }
 
