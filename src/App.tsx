@@ -46,6 +46,12 @@ const MainApp: React.FC = () => {
 
   useEffect(() => {
     const checkProgress = async () => {
+      // 如果URL有支付参数，不显示恢复进度弹窗
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('pay') || urlParams.get('code')) {
+        return;
+      }
+
       const saved = await api.getProgress(userId);
       if (saved && Object.keys(saved.responses).length > 0) {
         if (appState === 'LANDING') {
