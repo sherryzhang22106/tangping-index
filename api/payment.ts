@@ -1,12 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 
+// H5 公众号配置
 const APPID = process.env.WECHAT_APPID || 'wx767495c6a6f841c2';
+const APP_SECRET = process.env.WECHAT_APP_SECRET || '';
+
+// 小程序配置
+const MINIPROGRAM_APPID = process.env.MINIPROGRAM_APPID || 'wxd8ebf8c2915ab9d4';
+const MINIPROGRAM_SECRET = process.env.MINIPROGRAM_SECRET || '7ad3656d19aaefed862edeca85d824e7';
+
+// 微信支付配置
 const MCHID = process.env.WECHAT_MCHID || '1737651976';
 const API_KEY = process.env.WECHAT_API_KEY || '';
 const SERIAL_NO = process.env.WECHAT_SERIAL_NO || '7C26A3FC97A9933F59D6D1B988FDEEB0FD791AF5';
 const PRIVATE_KEY = process.env.WECHAT_PRIVATE_KEY || '';
-const APP_SECRET = process.env.WECHAT_APP_SECRET || '';
 const NOTIFY_URL = process.env.WECHAT_NOTIFY_URL || 'https://lying.bettermee.cn/api/payment';
 
 // 生成随机字符串
@@ -44,7 +51,7 @@ function generateOrderNo(): string {
   return `TP${dateStr}${random}`;
 }
 
-// 通过 code 获取 openid
+// 通过 code 获取 openid（H5 公众号）
 async function getOpenId(code: string): Promise<string> {
   if (!APP_SECRET) {
     throw new Error('缺少APP_SECRET配置');
@@ -60,6 +67,96 @@ async function getOpenId(code: string): Promise<string> {
   }
 
   return result.openid;
+}
+
+// 通过小程序 code 获取 openid（小程序专用）
+async function getMiniprogramOpenId(code: string): Promise<string> {
+  const secret = MINIPROGRAM_SECRET || APP_SECRET;
+  if (!secret) {
+    throw new Error('缺少小程序SECRET配置');
+  }
+
+  const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${MINIPROGRAM_APPID}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+  const response = await fetch(url);
+  const result = await response.json();
+
+  if (result.errcode) {
+    console.error('小程序获取openid失败:', result);
+    throw new Error(result.errmsg || '获取用户信息失败');
+  }
+
+  return result.openid;
+}
+
+// 创建小程序支付订单
+async function createMiniprogramPayment(openid: string, amount: number, description: string): Promise<any> {
+  if (!PRIVATE_KEY || !API_KEY) {
+    throw new Error('支付配置未完成');
+  }
+
+  const orderNo = generateOrderNo();
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonceStr = generateNonceStr();
+  const totalFen = Math.round(amount * 100);
+
+  const requestBody = {
+    appid: MINIPROGRAM_APPID,
+    mchid: MCHID,
+    description: description || '躺平指数测评',
+    out_trade_no: orderNo,
+    time_expire: new Date(Date.now() + 30 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, '+08:00'),
+    notify_url: NOTIFY_URL,
+    amount: {
+      total: totalFen,
+      currency: 'CNY'
+    },
+    payer: {
+      openid: openid
+    }
+  };
+
+  const bodyStr = JSON.stringify(requestBody);
+  const urlPath = '/v3/pay/transactions/jsapi';
+  const signature = generateSignature('POST', urlPath, timestamp, nonceStr, bodyStr);
+  const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${MCHID}",nonce_str="${nonceStr}",signature="${signature}",timestamp="${timestamp}",serial_no="${SERIAL_NO}"`;
+
+  const response = await fetch('https://api.mch.weixin.qq.com/v3/pay/transactions/jsapi', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': authorization,
+    },
+    body: bodyStr,
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    console.error('小程序支付创建失败:', result);
+    throw new Error(result.message || '创建支付订单失败');
+  }
+
+  // 生成小程序调起支付需要的参数
+  const payTimestamp = Math.floor(Date.now() / 1000).toString();
+  const payNonceStr = generateNonceStr();
+  const packageStr = `prepay_id=${result.prepay_id}`;
+
+  // 签名
+  const payMessage = `${MINIPROGRAM_APPID}\n${payTimestamp}\n${payNonceStr}\n${packageStr}\n`;
+  const paySign = crypto.createSign('RSA-SHA256');
+  paySign.update(payMessage);
+  const paySignature = paySign.sign(getPrivateKey(), 'base64');
+
+  return {
+    orderNo,
+    timeStamp: payTimestamp,
+    nonceStr: payNonceStr,
+    package: packageStr,
+    signType: 'RSA',
+    paySign: paySignature,
+    amount: amount
+  };
 }
 
 // 创建 Native 支付订单（PC扫码）
@@ -360,6 +457,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                        '127.0.0.1';
       const data = await createH5Payment(visitorId, amount, description, clientIp);
       return res.status(200).json({ success: true, data });
+    }
+
+    // POST /api/payment?action=code2session - 小程序登录获取 openid
+    if (req.method === 'POST' && action === 'code2session') {
+      const { code } = req.body;
+      if (!code) {
+        return res.status(400).json({ success: false, error: '缺少code参数' });
+      }
+      try {
+        const openid = await getMiniprogramOpenId(code);
+        return res.status(200).json({ success: true, openid });
+      } catch (error: any) {
+        console.error('code2session error:', error);
+        return res.status(400).json({ success: false, error: error.message });
+      }
+    }
+
+    // POST /api/payment?action=miniprogram - 创建小程序支付订单
+    if (req.method === 'POST' && action === 'miniprogram') {
+      const { openid, amount = 1.9, description = '躺平指数测评' } = req.body;
+      if (!openid) {
+        return res.status(400).json({ success: false, error: '缺少openid参数' });
+      }
+      try {
+        const data = await createMiniprogramPayment(openid, amount, description);
+        return res.status(200).json({ success: true, data });
+      } catch (error: any) {
+        console.error('miniprogram payment error:', error);
+        return res.status(500).json({ success: false, error: error.message });
+      }
     }
 
     // GET /api/payment?action=query&orderNo=xxx - 查询支付状态
